@@ -5,7 +5,7 @@ module control_unit (
     output logic reg_write,  // 1 bit cause you either write or dont for we3
     output logic alu_ctrl,   // 1 bit cause you only have 2 instructions
     output logic alu_src,    // 1 bit cause 2 input mux
-    output logic imm_src,    // 2 bits cause you only have I-type and B-type instructions
+    output logic imm_src,    // 1 bit cause you only have I-type and B-type instructions
     output logic pc_src      // 1 bit cause 2 input mux
 );
 
