@@ -42,4 +42,5 @@ module top
                  .alu_out(WD3),
                  .eq(eq)
     );
+endmodule
 
