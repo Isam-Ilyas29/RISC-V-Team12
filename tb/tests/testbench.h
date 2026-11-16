@@ -1,6 +1,7 @@
 #pragma once
 
 #include "base_testbench.h"
+#include <cstdlib>
 
 /**
  * Class only exists because top->clk is not always accessible in the testbench,
@@ -26,7 +27,8 @@ public:
 
             if (Verilated::gotFinish())
             {
-                exit(0);
+                ADD_FAILURE() << "Simulation ended early at cycle " << ticks;
+                std::exit(EXIT_FAILURE);
             }
         }
     }

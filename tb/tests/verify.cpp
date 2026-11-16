@@ -1,7 +1,6 @@
 #include "testbench.h"
 #include <cstdlib>
-
-#define CYCLES 10000
+#include <cstdint>
 
 unsigned int ticks = 0;
 
@@ -10,44 +9,65 @@ class CpuTestbench : public Testbench
 protected:
     void initializeInputs() override
     {
-        top->clk = 1;
+        ticks = 0;
+        top->clk = 0;
+        top->rst = 1;
+    }
+
+    void reset()
+    {
+        top->rst = 1;
+        runSimulation();
         top->rst = 0;
+    }
+
+    uint32_t step()
+    {
+        // runSimulation leaves the falling edge pending until the next eval.
+        const uint32_t previous = top->a0;
+        top->eval();
+        EXPECT_EQ(top->a0, previous) << "a0 changed before rising edge " << ticks;
+        runSimulation();
+        return top->a0;
     }
 };
 
-TEST_F(CpuTestbench, BaseProgramTest)
+TEST_F(CpuTestbench, AddiAndBne)
 {
-    bool success = false;
-    system("./compile.sh asm/program.S");
+    ASSERT_EQ(std::system("./compile.sh asm/addi_bne.S"), 0);
+    reset();
 
-    for (int i = 0; i < CYCLES; i++)
-    {
-        runSimulation(1);
-        if (top->a0 == 254)
-        {
-            SUCCEED();
-            success = true;
-            break;
-        }
-    }
-    if (!success)
-    {
-        FAIL() << "Counter did not reach 254";
-    }
+    const int32_t expected[] = {
+        -2048, -1, -1, 0,
+        0, -366, -366, -366, -366, 0, -1
+    };
+    for (int32_t value : expected)
+        ASSERT_EQ(step(), static_cast<uint32_t>(value)) << "cycle " << ticks;
+
+    reset();
+    ASSERT_EQ(step(), 0xfffff800u) << "first instruction after reset";
 }
 
-// Note this is how we are going to test your CPU. Do not worry about this for
-// now, as it requires a lot more instructions to function
-// TEST_F(CpuTestbench, Return5Test)
-// {
-//     system("./compile.sh c/return_5.c");
-//     runSimulation(100);
-//     EXPECT_EQ(top->a0, 5);
-// }
+TEST_F(CpuTestbench, BaseProgramTest)
+{
+    ASSERT_EQ(std::system("./compile.sh asm/program.S"), 0);
+    reset();
+
+    step();
+    ASSERT_EQ(step(), 0u);
+    ASSERT_EQ(step(), 0u);
+
+    // Each inner loop executes addi a0, addi a1, then bne.
+    for (unsigned count = 0; count < 255; ++count)
+        for (int cycle = 0; cycle < 3; ++cycle)
+            ASSERT_EQ(step(), count) << "cycle " << ticks;
+
+    for (unsigned value : {254u, 254u, 0u, 0u, 0u, 1u})
+        ASSERT_EQ(step(), value) << "cycle " << ticks;
+}
 
 int main(int argc, char **argv)
 {
     testing::InitGoogleTest(&argc, argv);
-    auto res = RUN_ALL_TESTS();
-    return res;
+    return RUN_ALL_TESTS();
 }

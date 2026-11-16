@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 # Usage: ./compile.sh <file.s>
 
 # Default vars
@@ -44,12 +46,12 @@ riscv64-unknown-elf-ld -melf32lriscv \
 riscv64-unknown-elf-objcopy -O binary \
                             -j .text "a.out.reloc" "a.bin"
 
-rm *dis 2>/dev/null
+
 
 # This generates a disassembly file
 # Memory in wrong place, but makes it easier to read (should be main = 0xbfc00000)
 riscv64-unknown-elf-objdump -f -d --source -m riscv \
-                            a.out.reloc > ${SCRIPT_DIR}/${basename}.dis
+                            a.out.reloc > "${SCRIPT_DIR}/${basename}.dis"
 
 # Formats into a hex file
 od -v -An -t x1 "a.bin" | tr -s '\n' | awk '{$1=$1};1' > "${output_file}"
