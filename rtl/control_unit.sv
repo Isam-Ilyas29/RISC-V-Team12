@@ -6,18 +6,30 @@ module control_unit (
     output logic alu_ctrl,   // 1 bit cause you only have 2 instructions
     output logic alu_src,    // 1 bit cause 2 input mux
     output logic imm_src,    // 1 bit cause you only have I-type and B-type instructions
-    output logic pc_src      // 1 bit cause 2 input mux
+    output logic pc_src,     // 1 bit cause 2 input mux
+    output logic result_src  // 1 bit cause either lw or addi currently
 );
 
     always_comb begin
+        // I-type instructions
         if (opcode == 7'b0010011) begin
             // addi 
-            reg_write = 1'b1;
-            alu_ctrl  = 1'b0;
-            alu_src   = 1'b1;
-            imm_src   = 1'b0;
-            pc_src    = 1'b0;
-        end else if (opcode == 7'b1100011) begin
+            reg_write  = 1'b1;
+            alu_ctrl   = 1'b0;
+            alu_src    = 1'b1;
+            imm_src    = 1'b0;
+            pc_src     = 1'b0;
+            result_src = 1'b0;
+        end else if (opcode == 7'b0000011) begin
+            // lw
+            reg_write  = 1'b1;
+            alu_ctrl   = 1'b0;  // 0 is used for addition (add immediate constant to address)
+            alu_src    = 1'b1;
+            imm_src    = 1'b0;
+            pc_src     = 1'b0;
+            result_src = 1'b1;
+        end  // B-type instructions
+        else if (opcode == 7'b1100011) begin
             // bne
             reg_write = 1'b0;
             alu_ctrl  = 1'b1;

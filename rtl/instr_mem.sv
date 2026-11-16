@@ -13,7 +13,7 @@ module instr_mem #(
     end
 
     always_comb begin
-        // 4 bytes for one word (32 bits) since hex file is separated at each byte
+        // 4 bytes for one word (32 bits) since RV32i is byte addressable
         rd = {
             {instr_array[a[ADDRESS_WIDTH-1:0]+3]},
             {instr_array[a[ADDRESS_WIDTH-1:0]+2]},
