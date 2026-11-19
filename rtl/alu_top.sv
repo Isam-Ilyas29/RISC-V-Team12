@@ -1,16 +1,16 @@
-module top
+module alu_top
     #(
-        parameter DATA_WIDTH = 32
+        parameter DATA_WIDTH = 32,
         parameter ADDR_WIDTH = 5
     )
     (
         input logic clk, WE3, alu_ctrl, alu_src,
-        input logic [DATA_WIDTH-1 : 0] ImmOp
-        input logic [ADDR_WIDTH-1 : 0] rs1, rs2, rd
+        input logic [DATA_WIDTH-1 : 0] ImmOp,
+        input logic [ADDR_WIDTH-1 : 0] rs1, rs2, rd,
         output logic [DATA_WIDTH-1 : 0] a0, eq
     );
 
-    logic      [DATA_WIDTH-1 : 0] RD1, RD2, WD3, alu2,
+    logic      [DATA_WIDTH-1 : 0] RD1, RD2, WD3, alu2;
     
 
     mux #(
@@ -43,4 +43,3 @@ module top
                  .eq(eq)
     );
 endmodule
-
