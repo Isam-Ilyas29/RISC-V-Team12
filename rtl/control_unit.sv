@@ -3,10 +3,10 @@ module control_unit (
     input logic [6:0] opcode, funct7,
     input logic [2:0] funct3,
     output logic reg_write, alu_src, pc_src, mem_write, jalr,
-    output logic [2:0] alu_ctrl,
+    output logic [3:0] alu_ctrl,
     output logic [1:0] imm_src, result_src
 );
-    localparam ADD = 3'd0, SLL = 3'd2, SRL = 3'd3, SRA = 3'd4;
+    localparam ADD = 4'd0, SLL = 4'd7, SRL = 4'd8, SRA = 4'd9;
 
     always_comb begin
         reg_write = 1'b0;

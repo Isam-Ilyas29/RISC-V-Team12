@@ -33,7 +33,7 @@ TEST_F(Control, Decode)
                     EXPECT_EQ(top->jalr, jalr);
                     if (shift) {
                         EXPECT_EQ(top->alu_src, opcode == 0x13);
-                        EXPECT_EQ(top->alu_ctrl, shift_left ? 2u : funct7 == 0x20 ? 4u : 3u);
+                        EXPECT_EQ(top->alu_ctrl, shift_left ? 7u : funct7 == 0x20 ? 9u : 8u);
                     }
                     if (jal || jalr)
                         EXPECT_EQ(top->result_src, 2u);

@@ -3,7 +3,8 @@ module alu_top #(
     parameter ADDR_WIDTH = 5
 ) (
     input logic clk, WE3, alu_src,
-    input logic [2:0] alu_ctrl, funct3,
+    input logic [3:0] alu_ctrl,
+    input logic [2:0] funct3,
     input logic [1:0] result_src,
     input logic [DATA_WIDTH-1:0] ImmOp, read_data, pc_plus4,
     input logic [ADDR_WIDTH-1:0] rs1, rs2, rd,

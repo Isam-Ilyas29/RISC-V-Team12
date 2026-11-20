@@ -4,7 +4,7 @@ module top #(parameter DATA_WIDTH = 32) (
 );
     logic [31:0] pc, instruction, immediate, alu_result, store_data, read_data;
     logic branch_taken, reg_write, alu_src, pc_src, mem_write, jalr;
-    logic [2:0] alu_ctrl;
+    logic [3:0] alu_ctrl;
     logic [1:0] imm_src, result_src;
 
     instr_mem rom(.a(pc), .rd(instruction));
