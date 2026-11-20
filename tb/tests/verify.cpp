@@ -85,6 +85,42 @@ TEST_F(CpuTestbench, AllBranchInstructions)
         ASSERT_EQ(step(), value) << "cycle " << ticks;
 }
 
+TEST_F(CpuTestbench, ShiftInstructions)
+{
+    ASSERT_EQ(std::system("./compile.sh asm/shifts.S"), 0);
+    reset();
+    const uint32_t expected[] = {
+        0x00000000u, 0x00000000u, 0xfffffff8u, 0xfffffff0u, 0x00000000u, 0xfffffff8u, 0x7ffffffcu, 0x00000001u,
+        0xfffffff8u, 0xfffffffcu, 0xffffffffu, 0xffffffffu, 0xfffffff8u, 0xfffffff8u, 0xfffffff0u, 0xfffffff0u,
+        0x00000000u, 0x00000000u, 0xfffffff8u, 0xfffffff8u, 0xfffffff0u, 0xfffffff0u, 0x00000000u, 0x00000000u,
+        0xfffffff8u, 0xfffffff8u, 0x7ffffffcu, 0x7ffffffcu, 0x00000001u, 0x00000001u, 0xfffffff8u, 0xfffffff8u,
+        0x7ffffffcu, 0x7ffffffcu, 0x00000001u, 0x00000001u, 0xfffffff8u, 0xfffffff8u, 0xfffffffcu, 0xfffffffcu,
+        0xffffffffu, 0xffffffffu, 0xfffffff8u, 0xfffffff8u, 0xfffffffcu, 0xfffffffcu, 0xffffffffu, 0x00000001u,
+        0x80000000u, 0xffffffffu, 0xffffffffu, 0x00000000u
+    };
+    for (uint32_t value : expected)
+        ASSERT_EQ(step(), value) << "cycle " << ticks;
+}
+
+TEST_F(CpuTestbench, JumpInstructions)
+{
+    ASSERT_EQ(std::system("./compile.sh asm/jumps.S"), 0);
+    reset();
+    const uint32_t expected[] = {0, 0, 8, 8, 8, 28, 28, 28, 44, 44, 45, 45,
+                                 45, 45, 76, 76, 77, 77, 77};
+    for (uint32_t value : expected)
+        ASSERT_EQ(step(), value) << "cycle " << ticks;
+}
+
+TEST_F(CpuTestbench, LoadStoreWriteback)
+{
+    ASSERT_EQ(std::system("./compile.sh asm/memory.S"), 0);
+    reset();
+    const uint32_t expected[] = {0, 0, 0, 0, 0, 123, 123, 123, 123, 0xffffffffu};
+    for (uint32_t value : expected)
+        ASSERT_EQ(step(), value) << "cycle " << ticks;
+}
+
 int main(int argc, char **argv)
 {
     testing::InitGoogleTest(&argc, argv);

@@ -1,5 +1,6 @@
 module data_mem #(
-    parameter ADDRESS_WIDTH = 9
+    parameter ADDRESS_WIDTH = 9,
+    parameter INIT_FILE = "../rtl/data.hex"
 ) (
     input logic [31:0] a,   // ALU result
     input logic [31:0] wd,  // Write data (needed for sw but now lw extension of lab4)
@@ -12,7 +13,8 @@ module data_mem #(
     logic [7:0] ram[2**ADDRESS_WIDTH-1:0];
 
     initial begin
-        $readmemh("../rtl/data.hex", ram);
+        if (INIT_FILE != "")
+            $readmemh(INIT_FILE, ram);
     end
 
     // Sequential write

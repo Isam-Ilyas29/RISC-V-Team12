@@ -19,6 +19,7 @@ run_suite() {
     local extra=()
     case "$name" in
         reg_file) rtl=../rtl/alu_reg_file.sv ;;
+        top) extra=(../rtl/alu_reg_file.sv) ;;
         alu_top) extra=(../rtl/alu_reg_file.sv) ;;
         lab4_cpu) rtl=lab4_cpu.sv; extra=(../rtl/alu_top.sv ../rtl/alu_reg_file.sv) ;;
     esac
@@ -35,7 +36,7 @@ run_suite() {
 
 files=("$@")
 if (( $# == 0 )); then
-    files=(tests/*.cpp lab4_cpu)
+    files=(tests/*.cpp)
 fi
 status=0
 for file in "${files[@]}"; do

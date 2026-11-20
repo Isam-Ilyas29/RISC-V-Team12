@@ -1,60 +1,68 @@
 module control_unit (
-    input logic       branch_taken,
-    input logic [6:0] opcode,
-
-    output logic       reg_write,   // 1 bit cause you either write or dont for we3
-    output logic       alu_ctrl,    // 1 bit cause you only have 2 instructions
-    output logic       alu_src,     // 1 bit cause 2 input mux
-    output logic [1:0] imm_src,     // 1 bit cause you only have I-type and B-type instructions
-    output logic       pc_src,      // 1 bit cause 2 input mux
-    output logic       result_src,  // 1 bit cause either lw or addi currently
-    output logic       mem_write    // 1 bit cause you either write or dont in data memory
+    input logic branch_taken,
+    input logic [6:0] opcode, funct7,
+    input logic [2:0] funct3,
+    output logic reg_write, alu_src, pc_src, mem_write, jalr,
+    output logic [2:0] alu_ctrl,
+    output logic [1:0] imm_src, result_src
 );
+    localparam ADD = 3'd0, SLL = 3'd2, SRL = 3'd3, SRA = 3'd4;
 
     always_comb begin
-        // I-type instructions
-        if (opcode == 7'b0010011) begin
-            // addi 
-            reg_write  = 1'b1;
-            alu_ctrl   = 1'b0;
-            alu_src    = 1'b1;
-            imm_src    = 2'b00;
-            pc_src     = 1'b0;
-            result_src = 1'b0;
-            mem_write  = 1'b0;
-        end else if (opcode == 7'b0000011) begin
-            // lw
-            reg_write  = 1'b1;
-            alu_ctrl   = 1'b0;  // 0 is used for addition (add immediate constant to address)
-            alu_src    = 1'b1;
-            imm_src    = 2'b00;
-            pc_src     = 1'b0;
-            result_src = 1'b1;
-            mem_write  = 1'b0;
-        end  // S-type instructions
-        else if (opcode == 7'b0100011) begin
-            // sw
-            reg_write  = 1'b0;
-            alu_ctrl   = 1'b0;  // 0 is used for addition (add immediate constant to address)
-            alu_src    = 1'b1;
-            imm_src    = 2'b10;
-            pc_src     = 1'b0;
-            result_src = 1'b0;
-            mem_write  = 1'b1;
-        end  // B-type instructions
-        else if (opcode == 7'b1100011) begin
-            // Conditional branches
-            reg_write = 1'b0;
-            alu_ctrl  = 1'b1;
-            alu_src   = 1'b0;
-            imm_src   = 2'b01;
-            pc_src    = branch_taken;
-            mem_write = 1'b0;
-        end else begin
-            reg_write = 1'b0;
-            mem_write = 1'b0;
-            pc_src    = 1'b0;
-        end
-    end
+        reg_write = 1'b0;
+        alu_src = 1'b0;
+        pc_src = 1'b0;
+        mem_write = 1'b0;
+        jalr = 1'b0;
+        alu_ctrl = ADD;
+        imm_src = 2'b00;
+        result_src = 2'b00;
 
+        case (opcode)
+            7'h13, 7'h33: begin
+                alu_src = opcode == 7'h13;
+                case (funct3)
+                    3'b000: reg_write = opcode == 7'h13;
+                    3'b001: begin
+                        alu_ctrl = SLL;
+                        reg_write = funct7 == 7'h00;
+                    end
+                    3'b101: begin
+                        alu_ctrl = funct7 == 7'h20 ? SRA : SRL;
+                        reg_write = funct7 == 7'h00 || funct7 == 7'h20;
+                    end
+                    default: reg_write = 1'b0;
+                endcase
+            end
+            7'h03: begin
+                alu_src = 1'b1;
+                result_src = 2'b01;
+                reg_write = funct3 == 3'b010;
+            end
+            7'h23: begin
+                alu_src = 1'b1;
+                imm_src = 2'b10;
+                mem_write = funct3 == 3'b010;
+            end
+            7'h63: begin
+                imm_src = 2'b01;
+                pc_src = branch_taken && funct3 != 3'b010 && funct3 != 3'b011;
+            end
+            7'h6f: begin
+                imm_src = 2'b11;
+                result_src = 2'b10;
+                reg_write = 1'b1;
+                pc_src = 1'b1;
+            end
+            7'h67: begin
+                alu_src = 1'b1;
+                result_src = 2'b10;
+                reg_write = funct3 == 3'b000;
+                pc_src = funct3 == 3'b000;
+                jalr = funct3 == 3'b000;
+            end
+            default: begin
+            end
+        endcase
+    end
 endmodule
