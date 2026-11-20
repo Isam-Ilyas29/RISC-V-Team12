@@ -66,6 +66,25 @@ TEST_F(CpuTestbench, BaseProgramTest)
         ASSERT_EQ(step(), value) << "cycle " << ticks;
 }
 
+TEST_F(CpuTestbench, AllBranchInstructions)
+{
+    ASSERT_EQ(std::system("./compile.sh asm/branches.S"), 0);
+    reset();
+    const uint32_t expected[] = {
+        0, 0, 0, 0, 2, 2, 2, 2, 3, 5, 5, 5,
+        5, 7, 7, 7, 7, 8, 10, 10, 10, 10, 12, 12,
+        12, 12, 13, 15, 15, 15, 15, 17, 17, 17, 17, 18,
+        20, 20, 20, 20, 22, 22, 22, 22, 23, 25, 25, 25,
+        25, 27, 27, 27, 27, 28, 30, 30, 30, 30, 31, 31,
+        31, 32, 32, 32, 32, 32, 33, 33, 33, 34, 34, 34,
+        34, 34, 35, 35, 35, 36, 36, 36, 36, 36, 37, 37,
+        37, 38, 38, 38, 38, 38, 39, 39, 39, 40, 40, 40,
+        40, 40, 41, 41, 41, 42, 42, 43,
+    };
+    for (uint32_t value : expected)
+        ASSERT_EQ(step(), value) << "cycle " << ticks;
+}
+
 int main(int argc, char **argv)
 {
     testing::InitGoogleTest(&argc, argv);

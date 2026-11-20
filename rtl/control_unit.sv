@@ -1,5 +1,5 @@
 module control_unit (
-    input logic       eq,
+    input logic       branch_taken,
     input logic [6:0] opcode,
 
     output logic reg_write,  // 1 bit cause you either write or dont for we3
@@ -30,16 +30,12 @@ module control_unit (
             result_src = 1'b1;
         end  // B-type instructions
         else if (opcode == 7'b1100011) begin
-            // bne
+            // Conditional branches
             reg_write = 1'b0;
             alu_ctrl  = 1'b1;
             alu_src   = 1'b0;
             imm_src   = 1'b1;
-            if (eq == 0) begin
-                pc_src = 1'b1;
-            end else if (eq == 1'b1) begin
-                pc_src = 1'b0;
-            end
+            pc_src = branch_taken;
         end else begin
             reg_write = 1'b0;
             pc_src    = 1'b0;

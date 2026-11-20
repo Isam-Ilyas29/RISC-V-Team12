@@ -7,6 +7,8 @@ module alu_top
         input logic clk, WE3, alu_ctrl, alu_src,
         input logic [DATA_WIDTH-1 : 0] ImmOp,
         input logic [ADDR_WIDTH-1 : 0] rs1, rs2, rd,
+        input logic [2:0] funct3,
+        output logic branch_taken,
         output logic [DATA_WIDTH-1 : 0] a0, eq
     );
 
@@ -41,5 +43,11 @@ module alu_top
                  .alu_ctrl(alu_ctrl),
                  .alu_out(WD3),
                  .eq(eq)
+    );
+    branch_unit #(.DATA_WIDTH(DATA_WIDTH)) branch (
+        .rs1_data(RD1),
+        .rs2_data(RD2),
+        .funct3(funct3),
+        .branch_taken(branch_taken)
     );
 endmodule
