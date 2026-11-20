@@ -1,73 +1,49 @@
 #!/bin/bash
+set -eu
+cd "$(dirname "$0")"
 
-# This script runs the testbench
-# Usage: ./doit.sh <file1.cpp> <file2.cpp>
-
-# Constants
-SCRIPT_DIR=$(dirname "$(realpath "$0")")
-TEST_FOLDER=$(realpath "$SCRIPT_DIR/tests")
-RTL_FOLDER=$(realpath "$SCRIPT_DIR/../rtl")
-GREEN=$(tput setaf 2)
-RED=$(tput setaf 1)
-RESET=$(tput sgr0)
-
-# Variables
-passes=0
-fails=0
-
-# Handle terminal arguments
-if [[ $# -eq 0 ]]; then
-    # If no arguments provided, run all tests
-    files=(${TEST_FOLDER}/*.cpp)
-else
-    # If arguments provided, use them as input files
-    files=("$@")
+if [[ -f "$HOME/.local/include/gtest/gtest.h" ]]; then
+    export CPLUS_INCLUDE_PATH="$HOME/.local/include${CPLUS_INCLUDE_PATH:+:$CPLUS_INCLUDE_PATH}"
+    export LIBRARY_PATH="$HOME/.local/lib${LIBRARY_PATH:+:$LIBRARY_PATH}"
 fi
 
-# Cleanup
-rm -rf obj_dir
+build_root=obj_dir
+if [[ $PWD == *" "* ]]; then
+    build_root=$(mktemp -d)
+    trap 'rm -rf -- "$build_root"' EXIT
+fi
 
-cd $SCRIPT_DIR
+run_suite() {
+    local file=$1 name=$2 module=$2
+    local rtl="../rtl/$name.sv"
+    local extra=()
+    case "$name" in
+        reg_file) rtl=../rtl/alu_reg_file.sv ;;
+        alu_top) extra=(../rtl/alu_reg_file.sv) ;;
+        lab4_cpu) rtl=lab4_cpu.sv; extra=(../rtl/alu_top.sv ../rtl/alu_reg_file.sv) ;;
+    esac
+    local build="$build_root/$name"
+    export WAVE_DIR="waves/$name"
+    mkdir -p "$build" "$WAVE_DIR" || return 1
+    ln -sfn "$(realpath "$(dirname "$file")")" "$build/tests" || return 1
+    verilator -Wall -Wno-fatal --trace --Mdir "$build" --top-module "$module" \
+        -cc "$rtl" "${extra[@]}" -y ../rtl --exe "tests/$(basename "$file")" \
+        --prefix Vdut -o Vdut -LDFLAGS "-lgtest -lgtest_main -lpthread" || return 1
+    make -j -C "$build" -f Vdut.mk || return 1
+    "$build/Vdut"
+}
 
-# Iterate through files
+files=("$@")
+if (( $# == 0 )); then
+    files=(tests/*.cpp lab4_cpu)
+fi
+status=0
 for file in "${files[@]}"; do
-    name=$(basename "$file" _tb.cpp | cut -f1 -d\-)
-    
-    # If verify.cpp -> we are testing the top module
-    if [ $name == "verify.cpp" ]; then
-        name="top"
-    fi
-
-    # Translate Verilog -> C++ including testbench
-    verilator   -Wall --trace \
-                -cc ${RTL_FOLDER}/${name}.sv \
-                --exe ${file} \
-                -y ${RTL_FOLDER} \
-                --prefix "Vdut" \
-                -o Vdut \
-                -LDFLAGS "-lgtest -lgtest_main -lpthread" \
-
-    # Build C++ project with automatically generated Makefile
-    make -j -C obj_dir/ -f Vdut.mk
-    
-    # Run executable simulation file
-    ./obj_dir/Vdut
-    
-    # Check if the test succeeded or not
-    if [ $? -eq 0 ]; then
-        ((passes++))
-    else
-        ((fails++))
-    fi
-    
+    name=$(basename "$file" _tb.cpp | cut -f1 -d-)
+    case "$name" in
+        verify.cpp) name=top ;;
+        lab4_cpu) file=tests/verify.cpp ;;
+    esac
+    run_suite "$file" "$name" || status=1
 done
-
-# Exit as a pass or fail (for CI purposes)
-if [ $fails -eq 0 ]; then
-    echo "${GREEN}Success! All ${passes} test(s) passed!"
-    exit 0
-else
-    total=$((passes + fails))
-    echo "${RED}Failure! Only ${passes} test(s) passed out of ${total}."
-    exit 1
-fi
+exit "$status"

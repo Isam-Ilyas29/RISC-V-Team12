@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory>
+#include <string>
+#include <cstdlib>
 
 #include "Vdut.h"
 #include "verilated.h"
@@ -21,7 +23,10 @@ public:
         tfp = std::make_unique<VerilatedVcdC>();
         Verilated::traceEverOn(true);
         top->trace(tfp.get(), 99);
-        tfp->open("waveform.vcd");
+        const auto *test = ::testing::UnitTest::GetInstance()->current_test_info();
+        const char *dir = std::getenv("WAVE_DIR");
+        std::string path = std::string(dir ? dir : ".") + "/" + test->test_suite_name() + "." + test->name() + ".vcd";
+        tfp->open(path.c_str());
 #endif
         initializeInputs();
     }
@@ -34,9 +39,18 @@ public:
 #endif
     }
 
-    virtual void initializeInputs() = 0;
+    virtual void initializeInputs() {}
 
 protected:
+    void sample()
+    {
+        top->eval();
+#ifndef __APPLE__
+        tfp->dump(sampleTime++);
+#endif
+    }
+
+    unsigned sampleTime = 0;
     std::unique_ptr<Vdut> top;
 #ifndef __APPLE__
     std::unique_ptr<VerilatedVcdC> tfp;
