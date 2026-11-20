@@ -121,6 +121,21 @@ TEST_F(CpuTestbench, LoadStoreWriteback)
         ASSERT_EQ(step(), value) << "cycle " << ticks;
 }
 
+TEST_F(CpuTestbench, Overview)
+{
+    ASSERT_EQ(std::system("./compile.sh asm/overview.S"), 0);
+    reset();
+    const uint32_t expected[] = {
+        0, 0, 0, 0xfffffff0u, 0x7ffffffcu, 0xfffffffcu,
+        0xfffffff0u, 0x7ffffffcu, 0xfffffffcu, 0xfffffffcu, 0, 0xfffffffcu,
+        0xfffffffcu, 0xfffffffcu, 0xfffffffcu, 0xfffffffcu, 0xfffffffcu, 0xfffffffcu,
+        0xfffffffcu, 0xfffffffdu, 0xfffffffdu, 0xfffffffeu, 0xfffffffeu,
+        0xfffffffeu, 0xfffffffeu
+    };
+    for (uint32_t value : expected)
+        ASSERT_EQ(step(), value) << "cycle " << ticks;
+}
+
 int main(int argc, char **argv)
 {
     testing::InitGoogleTest(&argc, argv);
