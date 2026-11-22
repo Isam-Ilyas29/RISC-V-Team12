@@ -18,12 +18,12 @@ module data_mem #(
     end
 
     // Sequential write
-    always @(posedge clk) begin
+    always_ff @(posedge clk) begin
         if (we) begin
-            ram[a[ADDRESS_WIDTH-1:0]+3] = wd[31:24];
-            ram[a[ADDRESS_WIDTH-1:0]+2] = wd[23:16];
-            ram[a[ADDRESS_WIDTH-1:0]+1] = wd[15:8];
-            ram[a[ADDRESS_WIDTH-1:0]]   = wd[7:0];
+            ram[a[ADDRESS_WIDTH-1:0]+3] <= wd[31:24];
+            ram[a[ADDRESS_WIDTH-1:0]+2] <= wd[23:16];
+            ram[a[ADDRESS_WIDTH-1:0]+1] <= wd[15:8];
+            ram[a[ADDRESS_WIDTH-1:0]]   <= wd[7:0];
         end
     end
 

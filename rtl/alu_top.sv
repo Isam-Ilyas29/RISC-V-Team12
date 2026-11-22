@@ -4,9 +4,8 @@ module alu_top #(
 ) (
     input logic clk, WE3, alu_src,
     input logic [3:0] alu_ctrl,
-    input logic [2:0] funct3,
-    input logic [1:0] result_src,
-    input logic [DATA_WIDTH-1:0] ImmOp, read_data, pc_plus4,
+    input logic [2:0] funct3, result_src,
+    input logic [DATA_WIDTH-1:0] ImmOp, read_data, pc_plus4, PC_target,
     input logic [ADDR_WIDTH-1:0] rs1, rs2, rd,
     output logic branch_taken, eq,
     output logic [DATA_WIDTH-1:0] a0, alu_result, store_data
@@ -19,9 +18,11 @@ module alu_top #(
 
     always_comb begin
         case (result_src)
-            2'b00: WD3 = alu_result;
-            2'b01: WD3 = read_data;
-            2'b10: WD3 = pc_plus4;
+            3'b000: WD3 = alu_result;
+            3'b001: WD3 = read_data;
+            3'b010: WD3 = pc_plus4;
+            3'b011: WD3 = ImmOp;
+            3'b100: WD3 = PC_target;
             default: WD3 = '0;
         endcase
     end
