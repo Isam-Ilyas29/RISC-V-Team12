@@ -1,8 +1,17 @@
 #include "alu_testbench.h"
+#include "alu_controls.h"
 
 class Alu : public AluWaveTestbench
 {
 protected:
+    void load(unsigned a, unsigned b, unsigned operation)
+    {
+        top->alu1 = a;
+        top->alu2 = b;
+        top->alu_ctrl = operation;
+        sample();
+    }
+
     void initializeInputs() override
     {
         top->alu1 = 0;
@@ -11,18 +20,17 @@ protected:
     }
 };
 
-TEST_F(Alu, AddAndCompare)
+TEST_F(Alu, AddSubtractAndEquality)
 {
     for (unsigned a : {0u, 1u, 0x80000000u, 0xffffffffu})
         for (unsigned b : {0u, 1u, 0x80000000u, 0xffffffffu})
-            for (unsigned mode : {0u, 1u}) {
-                top->alu1 = a;
-                top->alu2 = b;
-                top->alu_ctrl = mode;
-                sample();
+            for (unsigned mode : {ADD, SUB}) {
+                load(a, b, mode);
                 WAVE_EXPECT_EQ(top->eq, a == b);
-                if (mode == 0)
+                if (mode == ADD)
                     WAVE_EXPECT_EQ(top->alu_out, a + b);
+                else
+                    WAVE_EXPECT_EQ(top->alu_out, a - b);
             }
 }
 
@@ -30,22 +38,18 @@ TEST_F(Alu, ShiftBoundaries)
 {
     for (unsigned value : {0u, 1u, 0x7fffffffu, 0x80000000u, 0xfffffff8u, 0xffffffffu})
         for (unsigned amount : {0u, 1u, 2u, 4u, 8u, 16u, 31u, 32u, 33u, 0xffffffffu})
-            for (unsigned mode : {7u, 8u, 9u}) {
+            for (unsigned mode : {SLL, SRL, SRA}) {
                 unsigned expected = value;
                 for (unsigned bit = 0; bit < (amount & 31); ++bit) {
-                    if (mode == 7)
+                    if (mode == SLL)
                         expected *= 2u;
                     else {
-                        const unsigned sign = mode == 9 ? expected & 0x80000000u : 0;
+                        const unsigned sign = mode == SRA ? expected & 0x80000000u : 0;
                         expected = expected / 2u + sign;
                     }
                 }
 
-                //assertion check
-                top->alu1 = value;
-                top->alu2 = amount;
-                top->alu_ctrl = mode;
-                sample();
+                load(value, amount, mode);
                 WAVE_EXPECT_EQ(top->alu_out, expected)
                     << "value " << value << ", amount " << amount << ", mode " << mode;
             }
@@ -72,13 +76,13 @@ TEST_F(Alu, ArithmeticLogicAndComparisons)
 {
     struct Case { unsigned mode, a, b, expected; };
     const Case cases[] = {
-        {1, 10, 3, 7}, {1, 3, 10, 0xfffffff9u},
-        {2, 0xaaaaaaaau, 0x55555555u, 0},
-        {3, 0xaaaaaaaau, 0x55555555u, 0xffffffffu},
-        {4, 0xaaaaaaaau, 0xaaaaaaaau, 0},
-        {4, 0xaaaaaaaau, 0x55555555u, 0xffffffffu},
-        {5, 0xffffffffu, 1, 1}, {5, 1, 0xffffffffu, 0}, {5, 1, 1, 0},
-        {6, 0xffffffffu, 1, 0}, {6, 1, 0xffffffffu, 1}, {6, 1, 1, 0}
+        {SUB, 10, 3, 7}, {SUB, 3, 10, 0xfffffff9u},
+        {AND, 0xaaaaaaaau, 0x55555555u, 0},
+        {OR, 0xaaaaaaaau, 0x55555555u, 0xffffffffu},
+        {XOR, 0xaaaaaaaau, 0xaaaaaaaau, 0},
+        {XOR, 0xaaaaaaaau, 0x55555555u, 0xffffffffu},
+        {SLT, 0xffffffffu, 1, 1}, {SLT, 1, 0xffffffffu, 0}, {SLT, 1, 1, 0},
+        {SLTU, 0xffffffffu, 1, 0}, {SLTU, 1, 0xffffffffu, 1}, {SLTU, 1, 1, 0}
     };
     for (const auto &c : cases) {
         top->alu1 = c.a;

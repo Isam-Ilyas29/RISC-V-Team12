@@ -1,6 +1,14 @@
 #include "base_testbench.h"
 
-using Immediate = BaseTestbench;
+class Immediate : public BaseTestbench
+{
+protected:
+    void initializeInputs() override
+    {
+        top->imm = 0;
+        top->imm_src = 0;
+    }
+};
 
 TEST_F(Immediate, IAndBBoundaries)
 {
@@ -10,7 +18,7 @@ TEST_F(Immediate, IAndBBoundaries)
         top->imm_src = 0;
         top->imm = (bits << 13) | 0x15ab;
         sample();
-        ASSERT_EQ(top->imm_op, unsigned(value));
+        WAVE_ASSERT_EQ(top->imm_op, unsigned(value));
 
         unsigned offset = bits << 1;
         unsigned instruction = ((offset >> 12) << 31) | (((offset >> 5) & 63) << 25)
@@ -19,7 +27,7 @@ TEST_F(Immediate, IAndBBoundaries)
         top->imm_src = 1;
         top->imm = instruction >> 7;
         sample();
-        ASSERT_EQ(top->imm_op, unsigned(value * 2));
+        WAVE_ASSERT_EQ(top->imm_op, unsigned(value * 2));
     }
 }
 TEST_F(Immediate, JumpOffsets)
@@ -31,6 +39,19 @@ TEST_F(Immediate, JumpOffsets)
         top->imm = instruction >> 7;
         top->imm_src = 3;
         sample();
-        EXPECT_EQ(top->imm_op, static_cast<unsigned>(offset));
+        WAVE_EXPECT_EQ(top->imm_op, static_cast<unsigned>(offset));
+    }
+}
+
+TEST_F(Immediate, StoreOffsets)
+{
+    for (int offset : {-2048, -33, -32, -1, 0, 1, 16, 31, 32, 1024, 2047}) {
+        const unsigned bits = static_cast<unsigned>(offset) & 0xfff;
+        const unsigned instruction = ((bits >> 5) << 25) | (0xabc << 13)
+                                   | ((bits & 31) << 7) | 0x23;
+        top->imm_src = 2;
+        top->imm = instruction >> 7;
+        sample();
+        WAVE_EXPECT_EQ(top->imm_op, static_cast<unsigned>(offset)) << "offset " << offset;
     }
 }

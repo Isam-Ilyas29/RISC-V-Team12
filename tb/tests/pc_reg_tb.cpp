@@ -1,6 +1,15 @@
 #include "base_testbench.h"
 
-using PcRegister = BaseTestbench;
+class PcRegister : public BaseTestbench
+{
+protected:
+    void initializeInputs() override
+    {
+        top->clk = 0;
+        top->rst = 0;
+        top->next_PC = 0;
+    }
+};
 
 TEST_F(PcRegister, LoadsOnlyOnRisingEdge)
 {
@@ -10,20 +19,20 @@ TEST_F(PcRegister, LoadsOnlyOnRisingEdge)
     sample();
     top->clk = 1;
     sample();
-    EXPECT_EQ(top->PC, 0u);
+    WAVE_EXPECT_EQ(top->PC, 0u);
     top->rst = 0;
     top->clk = 0;
     sample();
-    EXPECT_EQ(top->PC, 0u);
+    WAVE_EXPECT_EQ(top->PC, 0u);
     top->clk = 1;
     sample();
-    EXPECT_EQ(top->PC, 0x104u);
+    WAVE_EXPECT_EQ(top->PC, 0x104u);
     top->clk = 0;
     top->rst = 1;
     top->next_PC = 8;
     sample();
-    EXPECT_EQ(top->PC, 0x104u);
+    WAVE_EXPECT_EQ(top->PC, 0x104u);
     top->clk = 1;
     sample();
-    EXPECT_EQ(top->PC, 0u);
+    WAVE_EXPECT_EQ(top->PC, 0u);
 }

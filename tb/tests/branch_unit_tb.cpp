@@ -1,6 +1,15 @@
 #include "base_testbench.h"
 
-using Branch = BaseTestbench;
+class Branch : public BaseTestbench
+{
+protected:
+    void initializeInputs() override
+    {
+        top->rs1_data = 0;
+        top->rs2_data = 0;
+        top->funct3 = 0;
+    }
+};
 
 TEST_F(Branch, AllConditions)
 {
@@ -16,7 +25,7 @@ TEST_F(Branch, AllConditions)
                 top->rs2_data = b;
                 top->funct3 = condition;
                 sample();
-                EXPECT_EQ(top->branch_taken, expected[condition])
+                WAVE_EXPECT_EQ(top->branch_taken, expected[condition])
                     << "rs1 " << a << ", rs2 " << b << ", funct3 " << condition;
             }
 }
