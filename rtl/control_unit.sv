@@ -4,7 +4,7 @@ module control_unit (
     input logic [2:0] funct3,
     output logic reg_write, alu_src, pc_src, mem_write, jalr,
     output logic [3:0] alu_ctrl,
-    output logic [1:0] imm_src, result_src
+    output logic [2:0] imm_src, result_src
 );
     //alu_ctrl parameters
     localparam ADD  = 4'd0;
@@ -26,6 +26,8 @@ module control_unit (
     localparam BEQ   = 7'h63;
     localparam JAL   = 7'h6f;
     localparam JALR  = 7'h67;
+    localparam LUI   = 7'h37;
+    localparam AUIPC = 7'h17;
 
 
     always_comb begin
@@ -35,16 +37,16 @@ module control_unit (
         mem_write = 1'b0;
         jalr = 1'b0;
         alu_ctrl = ADD;
-        imm_src = 2'b00;
-        result_src = 2'b00;
+        imm_src = 3'b000;
+        result_src = 3'b000;
 
         case (opcode)
-            ALU_I, ALU_R: begin                                                                     // ALU instructions, I type and R type respectively
-                alu_src = opcode == 7'h13;                                                          //if true, instruction becomes I type
+            ALU_I, ALU_R: begin                 // ALU instructions, I type and R type respectively
+                alu_src = opcode == 7'h13;      //if true, instruction becomes I type
                 case (funct3)
-                    3'b000: begin 
-                        alu_ctrl  = funct7 == 7'h20 ? SUB : ADD;                                    //funct7 differs between sub and add by 1 bit                      
-                        reg_write = (funct7 == 7'h00) || (opcode=ALU_I) || (funct7 == 7'h20);       //check that instruction is valid
+                    3'b000: begin                                       //funct7 differs between sub and add by 1 bit  
+                        alu_ctrl  = (opcode == ALU_R && funct7 == 7'h20) ? SUB : ADD;        //check that instruction is valid   
+                        reg_write = (funct7 == 7'h00) || (opcode == ALU_I) || (funct7 == 7'h20);
                     end
                     3'b001: begin
                         alu_ctrl  = SLL;
@@ -56,11 +58,11 @@ module control_unit (
                     end
                     3'b011: begin
                         alu_ctrl  = SLTU;
-                        reg_write = (funct7 == 7'h00) || (opcode=ALU_I);
+                        reg_write = (funct7 == 7'h00) || (opcode == ALU_I);
                     end
                     3'b100: begin
                         alu_ctrl  = XOR;
-                        reg_write = (funct7 == 7'h00) || (opcode=ALU_I);
+                        reg_write = (funct7 == 7'h00) || (opcode == ALU_I);
                     end
                     3'b101: begin
                         alu_ctrl  = funct7 == 7'h20 ? SRA : SRL;
@@ -68,41 +70,51 @@ module control_unit (
                     end
                     3'b110: begin
                         alu_ctrl  = OR;
-                        reg_write = (funct7 == 7'h00) || (opcode=ALU_I);
+                        reg_write = (funct7 == 7'h00) || (opcode == ALU_I);
                     end
                     3'b111: begin
                         alu_ctrl  = AND;
-                        reg_write = (funct7 == 7'h00) || (opcode=ALU_I);
+                        reg_write = (funct7 == 7'h00) || (opcode == ALU_I);
                     end
                     default: reg_write = 1'b0;
                 endcase
             end
             LW: begin                    // lw instruction
                 alu_src = 1'b1;
-                result_src = 2'b01;
+                result_src = 3'b001;
                 reg_write = funct3 == 3'b010;
             end
             SW: begin                    // sw instruction
                 alu_src = 1'b1;
-                imm_src = 2'b10;
+                imm_src = 3'b010;
                 mem_write = funct3 == 3'b010;
             end
             BEQ: begin                    // beq
-                imm_src = 2'b01;
+                imm_src = 3'b001;
                 pc_src = branch_taken && funct3 != 3'b010 && funct3 != 3'b011;
             end
             JAL: begin                    // jal instruction
-                imm_src = 2'b11;
-                result_src = 2'b10;
+                imm_src = 3'b011;
+                result_src = 3'b010;
                 reg_write = 1'b1;
                 pc_src = 1'b1;
             end
             JALR: begin                    // jalr instruction
                 alu_src = 1'b1;
-                result_src = 2'b10;
+                result_src = 3'b010;
                 reg_write = funct3 == 3'b000;
                 pc_src = funct3 == 3'b000;
                 jalr = funct3 == 3'b000;
+            end
+            LUI: begin                    // lui instruction
+                imm_src = 3'b100;
+                result_src = 3'b011;
+                reg_write = 1'b1;
+            end
+            AUIPC: begin                  // auipc instruction
+                imm_src = 3'b100;
+                result_src = 3'b100;
+                reg_write = 1'b1;
             end
             default: begin
             end

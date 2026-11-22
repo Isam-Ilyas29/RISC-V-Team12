@@ -4,3 +4,6 @@ obj_dir/
 a.out*
 a.bin
 .vscode/
+
+*.vcd.status
+*.vcd.checks.tsv

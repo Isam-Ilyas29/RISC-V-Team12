@@ -7,7 +7,7 @@ for status in Path(sys.argv[1]).glob('*.vcd.status'):
     header, body = text.split('$enddefinitions $end', 1)
     signals = [(1, 'valid', 'check_valid'), (1, 'check_pass', 'check_pass'),
                (1, 'failed', 'test_failed'), (1, 'done', 'test_done'),
-               (1, 'pass', 'test_pass'), (32, 'id', 'check_id'),
+               (1, 'pass', 'test_pass'), (32, 'id', 'check_id'), (32, 'line', 'source_line'),
                (64, 'actual', 'actual'), (64, 'expected', 'expected')]
     header += '\n$scope module TEST_STATUS $end\n'
     for width, identifier, name in signals:

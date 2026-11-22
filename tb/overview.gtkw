@@ -1,5 +1,18 @@
 [*] CPU overview
 [size] 1400 900
+@200
+-Test status
+@28
+TEST_STATUS.check_valid
+TEST_STATUS.check_pass
+TEST_STATUS.test_failed
+TEST_STATUS.test_done
+TEST_STATUS.test_pass
+@22
+TEST_STATUS.check_id
+TEST_STATUS.source_line
+TEST_STATUS.actual
+TEST_STATUS.expected
 @28
 TOP.clk
 TOP.rst
