@@ -1,4 +1,5 @@
 #include "alu_testbench.h"
+#include "alu_controls.h"
 
 class Datapath : public AluWaveTestbench
 {
@@ -8,7 +9,7 @@ protected:
         top->clk = 0;
         top->WE3 = 0;
         top->alu_src = 0;
-        top->alu_ctrl = 0;
+        top->alu_ctrl = ADD;
         top->funct3 = 0;
         top->result_src = 0;
         top->ImmOp = 0;
@@ -38,7 +39,7 @@ TEST_F(Datapath, WritebackAndBranchComparison)
 {
     top->rs1 = 0;
     top->rs2 = 0;
-    top->alu_ctrl = 0;
+    top->alu_ctrl = ADD;
     top->alu_src = 1;
     top->WE3 = 1;
     top->ImmOp = 17;
@@ -53,7 +54,7 @@ TEST_F(Datapath, WritebackAndBranchComparison)
     top->WE3 = 0;
     top->rd = 10;
     top->alu_src = 0;
-    top->alu_ctrl = 1;
+    top->alu_ctrl = SUB;
     top->rs1 = 10;
     for (unsigned rs2 : {0u, 11u}) {
         top->rs2 = rs2;
@@ -84,7 +85,7 @@ TEST_F(Datapath, WritebackSourcesAndOperandSelection)
     WAVE_EXPECT_EQ(top->store_data, 0x104u);
     top->alu_src = 1;
     top->ImmOp = 1;
-    top->alu_ctrl = 9;
+    top->alu_ctrl = SRA;
     sample();
     WAVE_EXPECT_EQ(top->alu_result, 0xfffffffcu);
     WAVE_EXPECT_EQ(top->store_data, 0x104u);
