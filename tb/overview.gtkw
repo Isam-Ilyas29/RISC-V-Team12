@@ -1,0 +1,65 @@
+[*] CPU overview
+[size] 1400 900
+@200
+-Test status
+@28
+TEST_STATUS.check_valid
+TEST_STATUS.check_pass
+TEST_STATUS.test_failed
+TEST_STATUS.test_done
+TEST_STATUS.test_pass
+@22
+TEST_STATUS.check_id
+TEST_STATUS.source_line
+TEST_STATUS.actual
+TEST_STATUS.expected
+@28
+TOP.clk
+TOP.rst
+@200
+-Instruction and PC
+@22
+TOP.top.pc[31:0]
+TOP.top.instruction[31:0]
+TOP.top.counter.next_PC[31:0]
+TOP.top.counter.target_PC[31:0]
+TOP.top.immediate[31:0]
+@200
+-Decode
+@22
+TOP.top.control.opcode[6:0]
+TOP.top.control.funct3[2:0]
+TOP.top.control.funct7[6:0]
+TOP.top.alu_ctrl[2:0]
+TOP.top.result_src[1:0]
+TOP.top.imm_src[1:0]
+@28
+TOP.top.alu_src
+TOP.top.reg_write
+TOP.top.branch_taken
+TOP.top.pc_src
+TOP.top.jalr
+@200
+-Registers and ALU
+@22
+TOP.top.datapath.rs1[4:0]
+TOP.top.datapath.rs2[4:0]
+TOP.top.datapath.rd[4:0]
+TOP.top.datapath.RD1[31:0]
+TOP.top.datapath.RD2[31:0]
+TOP.top.datapath.alu2[31:0]
+TOP.top.alu_result[31:0]
+TOP.top.datapath.pc_plus4[31:0]
+TOP.top.datapath.WD3[31:0]
+@28
+TOP.top.datapath.WE3
+@22
+TOP.a0[31:0]
+@200
+-Data memory
+@28
+TOP.top.mem_write
+@22
+TOP.top.alu_result[31:0]
+TOP.top.store_data[31:0]
+TOP.top.read_data[31:0]
