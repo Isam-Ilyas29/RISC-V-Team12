@@ -1,43 +1,119 @@
+/*
+Verifies the control unit, exits with a 0 on success.
+*/
+
 #include "base_testbench.h"
 
-using Control = BaseTestbench;
+unsigned int ticks = 0;
 
-TEST_F(Control, Decode)
+class ControlUnitTestbench : public BaseTestbench
 {
-    for (unsigned opcode : {0x13u, 0x33u, 0x03u, 0x23u, 0x63u, 0x6fu, 0x67u, 0u, 0x7fu})
-        for (unsigned funct3 = 0; funct3 < 8; ++funct3)
-            for (unsigned funct7 : {0u, 0x20u, 1u, 0x7fu})
-                for (unsigned taken : {0u, 1u}) {
-                    if (taken && opcode != 0x63)
-                        continue;
-                    if (funct7 && !((opcode == 0x13 || opcode == 0x33) &&
-                                    (funct3 == 1 || funct3 == 5)))
-                        continue;
-                    top->opcode = opcode;
-                    top->funct3 = funct3;
-                    top->funct7 = funct7;
-                    top->branch_taken = taken;
-                    sample();
-                    const bool shift_left = funct3 == 1 && funct7 == 0;
-                    const bool shift_right = funct3 == 5 && (funct7 == 0 || funct7 == 0x20);
-                    const bool shift = (opcode == 0x13 || opcode == 0x33) && (shift_left || shift_right);
-                    const bool addi = opcode == 0x13 && funct3 == 0;
-                    const bool load = opcode == 3 && funct3 == 2;
-                    const bool store = opcode == 0x23 && funct3 == 2;
-                    const bool jal = opcode == 0x6f;
-                    const bool jalr = opcode == 0x67 && funct3 == 0;
-                    const bool branch = opcode == 0x63 && funct3 != 2 && funct3 != 3;
-                    EXPECT_EQ(top->reg_write, shift || addi || load || jal || jalr);
-                    EXPECT_EQ(top->mem_write, store);
-                    EXPECT_EQ(top->pc_src, jal || jalr || (branch && taken));
-                    EXPECT_EQ(top->jalr, jalr);
-                    if (shift) {
-                        EXPECT_EQ(top->alu_src, opcode == 0x13);
-                        EXPECT_EQ(top->alu_ctrl, shift_left ? 7u : funct7 == 0x20 ? 9u : 8u);
-                    }
-                    if (jal || jalr)
-                        EXPECT_EQ(top->result_src, 2u);
-                    if (jal)
-                        EXPECT_EQ(top->imm_src, 3u);
-                }
+protected:
+    void initializeInputs() override
+    {
+        top->eq = 0;
+        top->opcode = 0;
+        top->funct3 = 0;
+        top->funct7 = 0;
+    }
+
+    void loadInstr(uint32_t instr)
+    {
+        top->opcode = instr & 0x7F;         // bits [6:0]
+        top->funct3 = (instr >> 12) & 0x7;  // bits [14:12]
+        top->funct7 = (instr >> 30) & 0x1;  // bit 30
+        top->eval();
+    }
+};
+
+
+// addi
+TEST_F(ControlUnitTestbench, Addi) {
+    // addi x1, x0, 5
+    loadInstr(0b00000000010100000000000010010011);
+    EXPECT_EQ(top->reg_write, 1);
+    EXPECT_EQ(top->alu_ctrl, 0);
+    EXPECT_EQ(top->alu_src, 1);
+    EXPECT_EQ(top->imm_src, 0b00);
+    EXPECT_EQ(top->pc_src, 0);
+    EXPECT_EQ(top->result_src, 0);
+    EXPECT_EQ(top->mem_write, 0);
+}
+
+
+// loads (lb, lh, lw, lbu, lhu)
+TEST_F(ControlUnitTestbench, Loads) {
+    // lb x1, 0(x2)
+    loadInstr(0b00000000000000010000000010000011);
+    EXPECT_EQ(top->reg_write, 1);
+    EXPECT_EQ(top->alu_ctrl, 0);
+    EXPECT_EQ(top->alu_src, 1);
+    EXPECT_EQ(top->imm_src, 0b00);
+    EXPECT_EQ(top->pc_src, 0);
+    EXPECT_EQ(top->result_src, 1);
+    EXPECT_EQ(top->mem_write, 0);
+    EXPECT_EQ(top->data_ctrl, 0b000);
+
+    // lh x1, 0(x2)
+    loadInstr(0b00000000000000010001000010000011);
+    EXPECT_EQ(top->result_src, 1);
+    EXPECT_EQ(top->data_ctrl, 0b001);
+
+    // lw x1, 0(x2)
+    loadInstr(0b00000000000000010010000010000011);
+    EXPECT_EQ(top->result_src, 1);
+    EXPECT_EQ(top->data_ctrl, 0b010);
+
+    // lbu x1, 0(x2)
+    loadInstr(0b00000000000000010100000010000011);
+    EXPECT_EQ(top->result_src, 1);
+    EXPECT_EQ(top->data_ctrl, 0b100);
+
+    // lhu x1, 0(x2)
+    loadInstr(0b00000000000000010101000010000011);
+    EXPECT_EQ(top->result_src, 1);
+    EXPECT_EQ(top->data_ctrl, 0b101);
+}
+
+
+// stores (sb, sh, sw)
+TEST_F(ControlUnitTestbench, Stores) {
+    // sb x1, 0(x2)
+    loadInstr(0b00000000000100010000000000100011);
+    EXPECT_EQ(top->reg_write, 0);
+    EXPECT_EQ(top->alu_ctrl, 0);
+    EXPECT_EQ(top->alu_src, 1);
+    EXPECT_EQ(top->imm_src, 0b10);
+    EXPECT_EQ(top->pc_src, 0);
+    EXPECT_EQ(top->mem_write, 1);
+    EXPECT_EQ(top->data_ctrl, 0b000);
+
+    // sh x1, 0(x2)
+    loadInstr(0b00000000000100010001000000100011);
+    EXPECT_EQ(top->mem_write, 1);
+    EXPECT_EQ(top->data_ctrl, 0b001);
+
+    // sw x1, 0(x2)
+    loadInstr(0b00000000000100010010000000100011);
+    EXPECT_EQ(top->mem_write, 1);
+    EXPECT_EQ(top->data_ctrl, 0b010);
+}
+
+
+// brances (bne)
+TEST_F(ControlUnitTestbench, Branches) {
+    // bne x1, x2, 0 -- (taken, registers differ)
+    top->eq = 0;
+    loadInstr(0b00000000001000001001000001100011);
+    EXPECT_EQ(top->reg_write, 0);
+    EXPECT_EQ(top->alu_ctrl, 1);
+    EXPECT_EQ(top->alu_src, 0);
+    EXPECT_EQ(top->imm_src, 0b01);
+    EXPECT_EQ(top->pc_src, 1);
+    EXPECT_EQ(top->mem_write, 0);
+
+    // bne x1, x2, 0 (not taken, registers equal)
+    top->eq = 1;
+    loadInstr(0b00000000001000001001000001100011);
+    EXPECT_EQ(top->pc_src, 0);
 }
