@@ -6,13 +6,14 @@ module top #(parameter DATA_WIDTH = 32) (
     logic branch_taken, reg_write, alu_src, pc_src, mem_write, jalr;
     logic [3:0] alu_ctrl;
     logic [1:0] imm_src, result_src;
+    logic [2:0] data_ctrl;
 
     instr_mem rom(.a(pc), .rd(instruction));
     control_unit control (
-        .opcode(instruction[6:0]), .funct3(instruction[14:12]), .funct7(instruction[31:25]),
+        .opcode(instruction[6:0]), .funct3(instruction[14:12]), .funct7(instruction[30]),
         .branch_taken(branch_taken), .reg_write(reg_write), .alu_ctrl(alu_ctrl),
         .alu_src(alu_src), .imm_src(imm_src), .pc_src(pc_src), .result_src(result_src),
-        .mem_write(mem_write), .jalr(jalr)
+        .mem_write(mem_write), .jalr(jalr), .data_ctrl(data_ctrl)
     );
     sign_extend extend(.imm(instruction[31:7]), .imm_src(imm_src), .imm_op(immediate));
     pc_top counter (
@@ -28,6 +29,7 @@ module top #(parameter DATA_WIDTH = 32) (
         .alu_result(alu_result), .store_data(store_data)
     );
     data_mem #(.INIT_FILE("")) ram (
-        .clk(clk), .we(mem_write && !rst), .a(alu_result), .wd(store_data), .rd(read_data)
+        .clk(clk), .we(mem_write && !rst), .a(alu_result), .wd(store_data),
+        .data_ctrl(data_ctrl), .rd(read_data)
     );
 endmodule

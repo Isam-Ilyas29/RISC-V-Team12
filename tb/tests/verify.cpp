@@ -4,6 +4,17 @@
 
 unsigned int ticks = 0;
 
+// Check ADD/SUB selection and ADDI immediates from -2048 to 2047.
+TEST_F(CpuTestbench, ArithmeticDecode)
+{
+    WAVE_ASSERT_EQ(std::system("./compile.sh asm/arithmetic_decode.S"), 0);
+    reset();
+    const int32_t expected[] = {0, 0, 0, 10, 4, 1028, 1027, -1021, 1026};
+    for (int32_t value : expected)
+        WAVE_ASSERT_EQ(step(), static_cast<uint32_t>(value)) << "cycle " << ticks;
+}
+
+// Run the ADDI/BNE program and check a0 after each instruction and after reset.
 TEST_F(CpuTestbench, AddiAndBne)
 {
     WAVE_ASSERT_EQ(std::system("./compile.sh asm/addi_bne.S"), 0);
@@ -20,6 +31,7 @@ TEST_F(CpuTestbench, AddiAndBne)
     WAVE_ASSERT_EQ(step(), 0xfffff800u) << "first instruction after reset";
 }
 
+// Run the counter program and check a0 through its loop and restart.
 TEST_F(CpuTestbench, BaseProgramTest)
 {
     WAVE_ASSERT_EQ(std::system("./compile.sh asm/program.S"), 0);
@@ -38,6 +50,7 @@ TEST_F(CpuTestbench, BaseProgramTest)
         WAVE_ASSERT_EQ(step(), value) << "cycle " << ticks;
 }
 
+// Run all six branch instructions and check the expected a0 sequence.
 TEST_F(CpuTestbench, AllBranchInstructions)
 {
     WAVE_ASSERT_EQ(std::system("./compile.sh asm/branches.S"), 0);
@@ -57,6 +70,7 @@ TEST_F(CpuTestbench, AllBranchInstructions)
         WAVE_ASSERT_EQ(step(), value) << "cycle " << ticks;
 }
 
+// Run register and immediate shifts, checking masking, sign extension and x0.
 TEST_F(CpuTestbench, ShiftInstructions)
 {
     WAVE_ASSERT_EQ(std::system("./compile.sh asm/shifts.S"), 0);
@@ -74,6 +88,7 @@ TEST_F(CpuTestbench, ShiftInstructions)
         WAVE_ASSERT_EQ(step(), value) << "cycle " << ticks;
 }
 
+// Check forward and backward jumps, return addresses and JALR returns.
 TEST_F(CpuTestbench, JumpInstructions)
 {
     WAVE_ASSERT_EQ(std::system("./compile.sh asm/jumps.S"), 0);
@@ -84,6 +99,7 @@ TEST_F(CpuTestbench, JumpInstructions)
         WAVE_ASSERT_EQ(step(), value) << "cycle " << ticks;
 }
 
+// Store and load words, checking that loaded data reaches the correct register.
 TEST_F(CpuTestbench, LoadStoreWriteback)
 {
     WAVE_ASSERT_EQ(std::system("./compile.sh asm/memory.S"), 0);
@@ -93,6 +109,23 @@ TEST_F(CpuTestbench, LoadStoreWriteback)
         WAVE_ASSERT_EQ(step(), value) << "cycle " << ticks;
 }
 
+// Check signed/unsigned byte and halfword loads, and preserve bytes outside each store.
+TEST_F(CpuTestbench, ByteAndHalfwordTransfers)
+{
+    WAVE_ASSERT_EQ(std::system("./compile.sh asm/partial_memory.S"), 0);
+    reset();
+    const uint32_t expected[] = {
+        0, 0, 0, 0, 0, 0,
+        0xffffff80u, 0x80u, 0xffff80ffu,
+        0xffff80ffu, 0xffff80ffu, 0xffff80ffu,
+        0x800080ffu, 0xffff8000u, 0x8000u, 0xffffffffu, 0xffu,
+        0xffu, 0xffu, 0x7fu, 0x7fu, 0x7fffu, 0x7fffu, 0x80007fffu
+    };
+    for (uint32_t value : expected)
+        WAVE_ASSERT_EQ(step(), value) << "cycle " << ticks;
+}
+
+// Run shifts, memory operations, branches and jumps together for the overview waveform.
 TEST_F(CpuTestbench, Overview)
 {
     WAVE_ASSERT_EQ(std::system("./compile.sh asm/overview.S"), 0);

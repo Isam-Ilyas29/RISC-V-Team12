@@ -28,8 +28,10 @@ public:
         top->trace(tfp.get(), 99);
         const auto *test = ::testing::UnitTest::GetInstance()->current_test_info();
         const char *dir = std::getenv("WAVE_DIR");
-        std::filesystem::create_directories(dir ? dir : ".");
-        std::string path = std::string(dir ? dir : ".") + "/" + test->test_suite_name() + "." + test->name() + ".vcd";
+        const std::filesystem::path directory = dir ? dir : ".";
+        std::filesystem::create_directories(directory);
+        const std::string filename = std::string(test->test_suite_name()) + "." + test->name() + ".vcd";
+        const std::string path = (directory / filename).string();
         tfp->open(path.c_str());
         ASSERT_TRUE(tfp->isOpen()) << "Cannot open trace: " << path;
         status.open(path + ".status");
@@ -82,7 +84,8 @@ protected:
         ++sampleTime;
         emitStatus(false, pass);
         ++sampleTime;
-        if (pass) return ::testing::AssertionSuccess();
+        if (pass)
+            return ::testing::AssertionSuccess();
         return ::testing::AssertionFailure() << "check " << checkId << ": " << actualExpression
             << " = " << actualValue << ", expected " << expectedExpression << " = " << expectedValue;
     }

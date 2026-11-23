@@ -29,8 +29,10 @@ TOP.top.immediate[31:0]
 @22
 TOP.top.control.opcode[6:0]
 TOP.top.control.funct3[2:0]
-TOP.top.control.funct7[6:0]
-TOP.top.alu_ctrl[2:0]
+@28
+TOP.top.control.funct7
+@22
+TOP.top.alu_ctrl[3:0]
 TOP.top.result_src[1:0]
 TOP.top.imm_src[1:0]
 @28
@@ -60,6 +62,7 @@ TOP.a0[31:0]
 @28
 TOP.top.mem_write
 @22
+TOP.top.data_ctrl[2:0]
 TOP.top.alu_result[31:0]
 TOP.top.store_data[31:0]
 TOP.top.read_data[31:0]

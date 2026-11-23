@@ -1,4 +1,5 @@
 #!/bin/bash
+# Run from Windows through WSL: bash tb/doit.sh
 set -eu
 cd "$(dirname "$0")"
 

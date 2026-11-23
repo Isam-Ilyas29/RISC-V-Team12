@@ -39,14 +39,16 @@ module control_unit (
         alu_ctrl = ADD;
         imm_src = 2'b00;
         result_src = 2'b00;
+        data_ctrl = 3'b010;
 
         case (opcode)
             ALU_I, ALU_R: begin                                                                     // ALU instructions, I type and R type respectively
                 alu_src = opcode == 7'h13;                                                          //if true, instruction becomes I type
                 case (funct3)
                     3'b000: begin 
-                        alu_ctrl  = funct7 == 1'b1 ? SUB : ADD;                                    //funct7 differs between sub and add by 1 bit                      
-                        reg_write = (funct7 == 1'b0) || (opcode=ALU_I) || (funct7 == 1'b1);       //check that instruction is valid
+                        // Bit 30 selects SUB only for register instructions.
+                        alu_ctrl  = (opcode == ALU_R && funct7) ? SUB : ADD;
+                        reg_write = 1'b1;
                     end
                     3'b001: begin
                         alu_ctrl  = SLL;
@@ -58,11 +60,11 @@ module control_unit (
                     end
                     3'b011: begin
                         alu_ctrl  = SLTU;
-                        reg_write = (funct7 == 1'b0) || (opcode=ALU_I);
+                        reg_write = (funct7 == 1'b0) || (opcode == ALU_I);
                     end
                     3'b100: begin
                         alu_ctrl  = XOR;
-                        reg_write = (funct7 == 1'b0) || (opcode=ALU_I);
+                        reg_write = (funct7 == 1'b0) || (opcode == ALU_I);
                     end
                     3'b101: begin
                         alu_ctrl  = funct7 == 1'b1 ? SRA : SRL;
@@ -70,11 +72,11 @@ module control_unit (
                     end
                     3'b110: begin
                         alu_ctrl  = OR;
-                        reg_write = (funct7 == 1'b0) || (opcode=ALU_I);
+                        reg_write = (funct7 == 1'b0) || (opcode == ALU_I);
                     end
                     3'b111: begin
                         alu_ctrl  = AND;
-                        reg_write = (funct7 == 1'b0) || (opcode=ALU_I);
+                        reg_write = (funct7 == 1'b0) || (opcode == ALU_I);
                     end
                     default: reg_write = 1'b0;
                 endcase
@@ -83,7 +85,7 @@ module control_unit (
               // Load instructions
               reg_write  = 1'b1;
               alu_src    = 1'b1;
-              result_src = 1'b1;
+              result_src = 2'b01;
 
               case (funct3)
                 // lb

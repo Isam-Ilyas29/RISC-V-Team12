@@ -10,6 +10,7 @@ protected:
     }
 };
 
+// Check I-type and branch immediates at bit boundaries and across the sign bit.
 TEST_F(Immediate, IAndBBoundaries)
 {
     for (unsigned bits : {0u, 1u, 2u, 4u, 8u, 16u, 32u, 64u, 128u,
@@ -21,6 +22,7 @@ TEST_F(Immediate, IAndBBoundaries)
         WAVE_ASSERT_EQ(top->imm_op, unsigned(value));
 
         unsigned offset = bits << 1;
+        // B-type fields: imm[12], imm[10:5], imm[4:1], imm[11].
         unsigned instruction = ((offset >> 12) << 31) | (((offset >> 5) & 63) << 25)
                              | (0xabc << 13) | (((offset >> 1) & 15) << 8)
                              | (((offset >> 11) & 1) << 7);
@@ -30,10 +32,12 @@ TEST_F(Immediate, IAndBBoundaries)
         WAVE_ASSERT_EQ(top->imm_op, unsigned(value * 2));
     }
 }
+// Check positive and negative JAL offsets, including the largest encodable values.
 TEST_F(Immediate, JumpOffsets)
 {
     for (int offset : {-1048576, -4096, -2048, -4, 0, 2, 4, 2048, 4096, 1048574}) {
         const unsigned bits = static_cast<unsigned>(offset) & 0x1fffff;
+        // J-type fields: imm[20], imm[10:1], imm[11], imm[19:12].
         const unsigned instruction = ((bits >> 20) << 31) | (((bits >> 1) & 0x3ff) << 21)
                                    | (((bits >> 11) & 1) << 20) | (((bits >> 12) & 0xff) << 12);
         top->imm = instruction >> 7;
@@ -43,10 +47,12 @@ TEST_F(Immediate, JumpOffsets)
     }
 }
 
+// Check that the two S-type immediate fields form the correct signed store offset.
 TEST_F(Immediate, StoreOffsets)
 {
     for (int offset : {-2048, -33, -32, -1, 0, 1, 16, 31, 32, 1024, 2047}) {
         const unsigned bits = static_cast<unsigned>(offset) & 0xfff;
+        // S-type immediate is split between bits [31:25] and [11:7].
         const unsigned instruction = ((bits >> 5) << 25) | (0xabc << 13)
                                    | ((bits & 31) << 7) | 0x23;
         top->imm_src = 2;
