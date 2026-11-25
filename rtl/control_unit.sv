@@ -24,6 +24,8 @@ module control_unit (
     localparam BRANCH   = 7'b1100011;
     localparam JAL   = 7'b1101111;
     localparam JALR  = 7'b1100111;
+    localparam LUI = 7'b0110111;
+    localparam AUIPC = 7'b0010111;
 
     // alu_ctrl parameters
     localparam ADD  = 4'b0000;
@@ -119,7 +121,7 @@ module control_unit (
                 endcase
             end
             // Load instructions (I-type)
-            LW: begin
+            LOAD: begin
                 reg_write  = 1'b1;
                 alu_src    = 1'b1;
                 result_src = 2'b01;
@@ -140,7 +142,7 @@ module control_unit (
                 endcase
             end
             // Store instructions (S-type)
-            SW: begin
+            STORE: begin
                 alu_src   = 1'b1;
                 imm_src   = 3'b010;
                 mem_write = 1'b1;
