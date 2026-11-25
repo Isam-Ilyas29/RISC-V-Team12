@@ -10,6 +10,7 @@ module alu #(
     output logic                    eq
 );
 
+    // alu_ctrl
     localparam ADD  = 4'b0000;
     localparam SUB  = 4'b0001;
     localparam AND  = 4'b0010;
