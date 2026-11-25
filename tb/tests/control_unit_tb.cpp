@@ -11,7 +11,7 @@ class ControlUnitTestbench : public BaseTestbench
 protected:
     void initializeInputs() override
     {
-        top->eq = 0;
+        top->branch_taken = 0;
         top->opcode = 0;
         top->funct3 = 0;
         top->funct7 = 0;
@@ -39,6 +39,7 @@ TEST_F(ControlUnitTestbench, Addi) {
     EXPECT_EQ(top->result_src, 0);
     EXPECT_EQ(top->mem_write, 0);
 }
+
 
 
 // loads (lb, lh, lw, lbu, lhu)

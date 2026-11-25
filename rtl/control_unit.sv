@@ -9,7 +9,7 @@ module control_unit (
     pc_src,
     mem_write,
     jalr,
-    output logic [1:0] imm_src,
+    output logic [2:0] imm_src,
     result_src,
     output logic [3:0] alu_ctrl,
     output logic [2:0] data_ctrl,   // 3 bits to reflect the 3 bits load and store utilise from funct3
@@ -62,12 +62,12 @@ module control_unit (
         mem_write = 1'b0;
         jalr = 1'b0;
         alu_ctrl = ADD;
-        imm_src = 2'b00;
+        imm_src = 3'b000;
         result_src = 2'b00;
         data_ctrl = 3'b010;
 
         case (opcode)
-            // ALU instructions, I type and R type respectively
+            // ALU instructions (I type and R type respectively)
             ALU_I, ALU_R: begin
                 alu_src = opcode == ALU_I;  // if true, instruction becomes I type counterpart
                 case (funct3)
@@ -118,7 +118,7 @@ module control_unit (
                     end
                 endcase
             end
-            // Load instructions
+            // Load instructions (I-type)
             LW: begin
                 reg_write  = 1'b1;
                 alu_src    = 1'b1;
@@ -139,10 +139,10 @@ module control_unit (
                     default: data_ctrl = LW;
                 endcase
             end
-            // Store instructions
+            // Store instructions (S-type)
             SW: begin
                 alu_src   = 1'b1;
-                imm_src   = 2'b10;
+                imm_src   = 3'b010;
                 mem_write = 1'b1;
 
                 case (funct3)
@@ -156,9 +156,9 @@ module control_unit (
                     default: data_ctrl = SW;
                 endcase
             end
-            // Branch instructions
+            // Branch instructions (B-type)
             BRANCH: begin
-                imm_src = 2'b01;
+                imm_src = 3'b001;
                 pc_src  = branch_taken && funct3 != 3'b010 && funct3 != 3'b011;
 
                 case (funct3)
@@ -178,9 +178,9 @@ module control_unit (
                     default: branch_ctrl = BEQ;
                 endcase
             end
-            // Jump instructions
+            // Jump instructions (J=type)
             JAL: begin
-                imm_src = 2'b11;
+                imm_src = 3'b011;
                 result_src = 2'b10;
                 reg_write = 1'b1;
                 pc_src = 1'b1;
@@ -191,6 +191,17 @@ module control_unit (
                 reg_write = funct3 == 3'b000;
                 pc_src = funct3 == 3'b000;
                 jalr = funct3 == 3'b000;
+            end
+            // Upper immediate instructions (U-type)
+            LUI: begin
+                imm_src = 3'b100;
+                result_src = 3'b011;
+                reg_write = 1'b1;
+            end
+            AUIPC: begin
+                imm_src = 3'b100;
+                result_src = 3'b100;
+                reg_write = 1'b1;
             end
             default: begin
             end
