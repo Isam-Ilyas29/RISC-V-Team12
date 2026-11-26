@@ -7,7 +7,6 @@ module control_unit (
     output logic       reg_write,
     alu_src,
     mem_write,
-    jalr,
     output logic [2:0] imm_src,
     result_src,
     output logic [3:0] alu_ctrl,
@@ -67,7 +66,6 @@ module control_unit (
         alu_src = 1'b0;
         pc_ctrl = PC_INCREMENT;
         mem_write = 1'b0;
-        jalr = 1'b0;
         alu_ctrl = ADD;
         imm_src = 3'b000;
         result_src = 2'b00;
@@ -198,7 +196,6 @@ module control_unit (
                 result_src = 2'b10;
                 reg_write = funct3 == 3'b000;
                 if (funct3 == 3'b000) pc_ctrl = PC_JUMP;
-                jalr = funct3 == 3'b000;
             end
             // Upper immediate instructions (U-type)
             LUI: begin
