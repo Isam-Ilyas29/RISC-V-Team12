@@ -6,14 +6,14 @@ module control_unit (
 
     output logic       reg_write,
     alu_src,
-    pc_src,
     mem_write,
     jalr,
     output logic [2:0] imm_src,
     result_src,
     output logic [3:0] alu_ctrl,
-    output logic [2:0] data_ctrl,   // 3 bits to reflect the 3 bits load and store utilise from funct3
-    output logic [2:0] branch_ctrl  // 3 bits because 6 branch types
+    output logic [2:0] data_ctrl,    // 3 bits to reflect the 3 bits load and store utilise from funct3
+    output logic [2:0] branch_ctrl,  // 3 bits because 6 branch types
+    output logic [1:0] pc_ctrl
 );
 
     // opcode values
@@ -57,10 +57,15 @@ module control_unit (
     localparam BLTU = 3'b110;
     localparam BGEU = 3'b111;
 
+    // pc_ctrl parameters
+    localparam PC_INCREMENT = 2'b00;
+    localparam PC_BRANCH= 2'b01;
+    localparam PC_JUMP = 2'b10;
+
     always_comb begin
         reg_write = 1'b0;
         alu_src = 1'b0;
-        pc_src = 1'b0;
+        pc_ctrl = PC_INCREMENT;
         mem_write = 1'b0;
         jalr = 1'b0;
         alu_ctrl = ADD;
@@ -161,7 +166,8 @@ module control_unit (
             // Branch instructions (B-type)
             BRANCH: begin
                 imm_src = 3'b001;
-                pc_src  = branch_taken && funct3 != 3'b010 && funct3 != 3'b011;
+                // 010 and 011 are undefined branches which is why we check against them
+                if (branch_taken && funct3 != 3'b010 && funct3 != 3'b011) pc_ctrl = PC_BRANCH;
 
                 case (funct3)
                     // beq
@@ -185,13 +191,13 @@ module control_unit (
                 imm_src = 3'b011;
                 result_src = 2'b10;
                 reg_write = 1'b1;
-                pc_src = 1'b1;
+                pc_ctrl = PC_JUMP;
             end
             JALR: begin
                 alu_src = 1'b1;
                 result_src = 2'b10;
                 reg_write = funct3 == 3'b000;
-                pc_src = funct3 == 3'b000;
+                if (funct3 == 3'b000) pc_ctrl = PC_JUMP;
                 jalr = funct3 == 3'b000;
             end
             // Upper immediate instructions (U-type)
