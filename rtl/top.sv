@@ -1,34 +1,10 @@
-/*
-                              +----------------+
-                      +------>|  Control Unit  |<----------------------------+
-                      |       +----------------+                             |
-                      |                                                      | branch_taken
-                      |                                                      |
-+------+    +-------+ |  +-------+                                    +------------+
-|      |    |       | |  |       |-rd1---+--------------------------->|   Branch   |
-|  PC  |--->| Instr |-+->|  Reg  |       |             +------------->|    Unit    |
-|      |    |  Mem  |    | File  |-rd2-----------+-----+              +------------+
-+------+    +-------+    +-------+       |       |
-   ^            |            ^           |       v
-   |            |            |           |    +-----+     +-----+    +----------+  +--------+
-   |            +-> Extend ------ imm ------->| Mux |---->|     |--+>| Data Mem |->|        |
-   |                         |           |    +-----+     | ALU |  | +----------+  | Result |
-   |                         |           +--------------->|     |  +-------------->|  Mux   |
-   |                         |                            +-----+  |               +--------+
-   |                         |                                     |                    |
-   |                         |                                     |                    |
-   |                         |                                     |                    |
-   |                         +--------------- write back -------------------------------+
-   |                                                               |
-   +-------------------------- alu_result (jalr) ------------------+
-
-*/
 
 module top #(
     parameter DATA_WIDTH = 32
 ) (
     input  logic                  clk,
     input  logic                  rst,
+    input  logic                  trigger,
     output logic [DATA_WIDTH-1:0] a0
 );
     // Signals
@@ -44,6 +20,12 @@ module top #(
     logic [3:0] alu_ctrl;
     // Datapath
     logic [DATA_WIDTH-1:0] rd1, rd2, imm_ext, src_b, alu_result, read_data, result;
+    logic [DATA_WIDTH-1:0] memory_data;
+    logic trigger_address;
+
+    // Read-only button input, immediately above the 128 KiB data RAM.
+    assign trigger_address = alu_result == 32'h00020000;
+    assign read_data = trigger_address ? {{(DATA_WIDTH-1){1'b0}}, trigger} : memory_data;
 
     // Next PC: PC+4 / PC+imm (branch) / ALU result (jump)
     program_counter pc_unit (
@@ -84,7 +66,7 @@ module top #(
 
     reg_file rf (
         .clk(clk),
-        .we3(reg_write),
+        .we3(reg_write && !rst),
         .ad1(instr[19:15]),
         .ad2(instr[24:20]),
         .ad3(instr[11:7]),
@@ -124,13 +106,13 @@ module top #(
     );
 
     // MEMORY
-    data_mem dmem (
+    data_mem #(.ADDRESS_WIDTH(17)) dmem (
         .a        (alu_result),
         .wd       (rd2),
-        .we       (mem_write),
+        .we       (mem_write && !rst && !trigger_address),
         .data_ctrl(data_ctrl),
         .clk      (clk),
-        .rd       (read_data)
+        .rd       (memory_data)
     );
 
     // WRITEBACK

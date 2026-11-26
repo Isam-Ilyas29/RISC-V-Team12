@@ -34,9 +34,8 @@ TEST_F(ControlUnitTestbench, Lui) {
     WAVE_EXPECT_EQ(top->reg_write, 1);
     WAVE_EXPECT_EQ(top->imm_src, 0b100);
     WAVE_EXPECT_EQ(top->result_src, 0b011);
-    WAVE_EXPECT_EQ(top->pc_src, 0);
+    WAVE_EXPECT_EQ(top->pc_ctrl, 0);
     WAVE_EXPECT_EQ(top->mem_write, 0);
-    WAVE_EXPECT_EQ(top->jalr, 0);
 }
 
 
@@ -47,9 +46,8 @@ TEST_F(ControlUnitTestbench, Auipc) {
     WAVE_EXPECT_EQ(top->reg_write, 1);
     WAVE_EXPECT_EQ(top->imm_src, 0b100);
     WAVE_EXPECT_EQ(top->result_src, 0b100);
-    WAVE_EXPECT_EQ(top->pc_src, 0);
+    WAVE_EXPECT_EQ(top->pc_ctrl, 0);
     WAVE_EXPECT_EQ(top->mem_write, 0);
-    WAVE_EXPECT_EQ(top->jalr, 0);
 }
 
 
@@ -60,9 +58,8 @@ TEST_F(ControlUnitTestbench, Jal) {
     WAVE_EXPECT_EQ(top->reg_write, 1);
     WAVE_EXPECT_EQ(top->imm_src, 0b011);
     WAVE_EXPECT_EQ(top->result_src, 0b010);
-    WAVE_EXPECT_EQ(top->pc_src, 1);
+    WAVE_EXPECT_EQ(top->pc_ctrl, 1);
     WAVE_EXPECT_EQ(top->mem_write, 0);
-    WAVE_EXPECT_EQ(top->jalr, 0);
 }
 
 
@@ -75,9 +72,8 @@ TEST_F(ControlUnitTestbench, Jalr) {
     WAVE_EXPECT_EQ(top->alu_ctrl, 0);
     WAVE_EXPECT_EQ(top->imm_src, 0b000);
     WAVE_EXPECT_EQ(top->result_src, 0b010);
-    WAVE_EXPECT_EQ(top->pc_src, 1);
+    WAVE_EXPECT_EQ(top->pc_ctrl, 2);
     WAVE_EXPECT_EQ(top->mem_write, 0);
-    WAVE_EXPECT_EQ(top->jalr, 1);
 }
 
 
@@ -90,59 +86,58 @@ TEST_F(ControlUnitTestbench, Branches) {
     WAVE_EXPECT_EQ(top->alu_src, 0);
     WAVE_EXPECT_EQ(top->imm_src, 0b001);
     WAVE_EXPECT_EQ(top->mem_write, 0);
-    WAVE_EXPECT_EQ(top->jalr, 0);
     WAVE_EXPECT_EQ(top->branch_ctrl, 0b000);
-    WAVE_EXPECT_EQ(top->pc_src, 1);
+    WAVE_EXPECT_EQ(top->pc_ctrl, 1);
 
     // beq x1, x2, 8 (not taken)
     top->branch_taken = 0;
     loadInstr(0x00208463);
-    WAVE_EXPECT_EQ(top->pc_src, 0);
+    WAVE_EXPECT_EQ(top->pc_ctrl, 0);
 
     // bne x1, x2, 8
     top->branch_taken = 1;
     loadInstr(0x00209463);
     WAVE_EXPECT_EQ(top->branch_ctrl, 0b001);
-    WAVE_EXPECT_EQ(top->pc_src, 1);
+    WAVE_EXPECT_EQ(top->pc_ctrl, 1);
     top->branch_taken = 0;
     loadInstr(0x00209463);
-    WAVE_EXPECT_EQ(top->pc_src, 0);
+    WAVE_EXPECT_EQ(top->pc_ctrl, 0);
 
     // blt x1, x2, 8
     top->branch_taken = 1;
     loadInstr(0x0020C463);
     WAVE_EXPECT_EQ(top->branch_ctrl, 0b100);
-    WAVE_EXPECT_EQ(top->pc_src, 1);
+    WAVE_EXPECT_EQ(top->pc_ctrl, 1);
     top->branch_taken = 0;
     loadInstr(0x0020C463);
-    WAVE_EXPECT_EQ(top->pc_src, 0);
+    WAVE_EXPECT_EQ(top->pc_ctrl, 0);
 
     // bge x1, x2, 8
     top->branch_taken = 1;
     loadInstr(0x0020D463);
     WAVE_EXPECT_EQ(top->branch_ctrl, 0b101);
-    WAVE_EXPECT_EQ(top->pc_src, 1);
+    WAVE_EXPECT_EQ(top->pc_ctrl, 1);
     top->branch_taken = 0;
     loadInstr(0x0020D463);
-    WAVE_EXPECT_EQ(top->pc_src, 0);
+    WAVE_EXPECT_EQ(top->pc_ctrl, 0);
 
     // bltu x1, x2, 8
     top->branch_taken = 1;
     loadInstr(0x0020E463);
     WAVE_EXPECT_EQ(top->branch_ctrl, 0b110);
-    WAVE_EXPECT_EQ(top->pc_src, 1);
+    WAVE_EXPECT_EQ(top->pc_ctrl, 1);
     top->branch_taken = 0;
     loadInstr(0x0020E463);
-    WAVE_EXPECT_EQ(top->pc_src, 0);
+    WAVE_EXPECT_EQ(top->pc_ctrl, 0);
 
     // bgeu x1, x2, 8
     top->branch_taken = 1;
     loadInstr(0x0020F463);
     WAVE_EXPECT_EQ(top->branch_ctrl, 0b111);
-    WAVE_EXPECT_EQ(top->pc_src, 1);
+    WAVE_EXPECT_EQ(top->pc_ctrl, 1);
     top->branch_taken = 0;
     loadInstr(0x0020F463);
-    WAVE_EXPECT_EQ(top->pc_src, 0);
+    WAVE_EXPECT_EQ(top->pc_ctrl, 0);
 }
 
 
@@ -154,10 +149,9 @@ TEST_F(ControlUnitTestbench, Loads) {
     WAVE_EXPECT_EQ(top->alu_ctrl, 0);
     WAVE_EXPECT_EQ(top->alu_src, 1);
     WAVE_EXPECT_EQ(top->imm_src, 0b000);
-    WAVE_EXPECT_EQ(top->pc_src, 0);
+    WAVE_EXPECT_EQ(top->pc_ctrl, 0);
     WAVE_EXPECT_EQ(top->result_src, 0b001);
     WAVE_EXPECT_EQ(top->mem_write, 0);
-    WAVE_EXPECT_EQ(top->jalr, 0);
     WAVE_EXPECT_EQ(top->data_ctrl, 0b000);
 
     // lh x1, 0(x2)
@@ -194,9 +188,8 @@ TEST_F(ControlUnitTestbench, Stores) {
     WAVE_EXPECT_EQ(top->alu_ctrl, 0);
     WAVE_EXPECT_EQ(top->alu_src, 1);
     WAVE_EXPECT_EQ(top->imm_src, 0b010);
-    WAVE_EXPECT_EQ(top->pc_src, 0);
+    WAVE_EXPECT_EQ(top->pc_ctrl, 0);
     WAVE_EXPECT_EQ(top->mem_write, 1);
-    WAVE_EXPECT_EQ(top->jalr, 0);
     WAVE_EXPECT_EQ(top->data_ctrl, 0b000);
 
     // sh x1, 0(x2)
@@ -220,10 +213,9 @@ TEST_F(ControlUnitTestbench, AluImmediate) {
     WAVE_EXPECT_EQ(top->reg_write, 1);
     WAVE_EXPECT_EQ(top->alu_src, 1);
     WAVE_EXPECT_EQ(top->imm_src, 0b000);
-    WAVE_EXPECT_EQ(top->pc_src, 0);
+    WAVE_EXPECT_EQ(top->pc_ctrl, 0);
     WAVE_EXPECT_EQ(top->result_src, 0b000);
     WAVE_EXPECT_EQ(top->mem_write, 0);
-    WAVE_EXPECT_EQ(top->jalr, 0);
     WAVE_EXPECT_EQ(top->alu_ctrl, 0b0000);
 
     // slti x1, x2, 5
@@ -282,10 +274,9 @@ TEST_F(ControlUnitTestbench, AluRegister) {
     loadInstr(0x003100B3);
     WAVE_EXPECT_EQ(top->reg_write, 1);
     WAVE_EXPECT_EQ(top->alu_src, 0);
-    WAVE_EXPECT_EQ(top->pc_src, 0);
+    WAVE_EXPECT_EQ(top->pc_ctrl, 0);
     WAVE_EXPECT_EQ(top->result_src, 0b000);
     WAVE_EXPECT_EQ(top->mem_write, 0);
-    WAVE_EXPECT_EQ(top->jalr, 0);
     WAVE_EXPECT_EQ(top->alu_ctrl, 0b0000);
 
     // sub x1, x2, x3

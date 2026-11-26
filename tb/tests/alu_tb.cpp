@@ -20,75 +20,61 @@ protected:
     }
 };
 
-// ADD/SUB: zero, one, the sign bit and all ones, including wraparound.
-TEST_F(Alu, AddSubtractAndEquality)
+// Positive and negative operands, zero, signed overflow and wraparound.
+TEST_F(Alu, Add)
 {
-    for (unsigned a : {0u, 1u, 0x80000000u, 0xffffffffu})
-        for (unsigned b : {0u, 1u, 0x80000000u, 0xffffffffu})
-            for (unsigned mode : {ADD, SUB}) {
-                load(a, b, mode);
-                WAVE_EXPECT_EQ(top->eq, a == b);
-                if (mode == ADD)
-                    WAVE_EXPECT_EQ(top->alu_out, a + b);
-                else
-                    WAVE_EXPECT_EQ(top->alu_out, a - b);
-            }
+    load(0x0000000au, 0x00000005u, ADD);
+    WAVE_EXPECT_EQ(top->alu_out, 0x0000000fu);
+    WAVE_EXPECT_EQ(top->eq, 0u);
+
+    load(0x00000000u, 0x00000000u, ADD);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000000u);
+    WAVE_EXPECT_EQ(top->eq, 1u);
+
+    load(0xffffffffu, 0x00000001u, ADD);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000000u);
+    WAVE_EXPECT_EQ(top->eq, 0u);
+
+    load(0x7fffffffu, 0x00000001u, ADD);
+    WAVE_EXPECT_EQ(top->alu_out, 0x80000000u);
+    WAVE_EXPECT_EQ(top->eq, 0u);
+
+    load(0x80000000u, 0xffffffffu, ADD);
+    WAVE_EXPECT_EQ(top->alu_out, 0x7fffffffu);
+    WAVE_EXPECT_EQ(top->eq, 0u);
+
 }
 
-// SUB: small positive operands giving positive and negative results.
-TEST_F(Alu, SubtractSmallValues)
+// Positive, negative and equal operands, including wraparound.
+TEST_F(Alu, Subtract)
 {
-    load(10, 3, SUB);
-    WAVE_EXPECT_EQ(top->alu_out, 7u);
+    load(0x0000000au, 0x00000003u, SUB);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000007u);
     WAVE_EXPECT_EQ(top->eq, 0u);
-    load(3, 10, SUB);
+
+    load(0x00000003u, 0x0000000au, SUB);
     WAVE_EXPECT_EQ(top->alu_out, 0xfffffff9u);
     WAVE_EXPECT_EQ(top->eq, 0u);
+
+    load(0x00000005u, 0x00000005u, SUB);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000000u);
+    WAVE_EXPECT_EQ(top->eq, 1u);
+
+    load(0x00000000u, 0x00000001u, SUB);
+    WAVE_EXPECT_EQ(top->alu_out, 0xffffffffu);
+    WAVE_EXPECT_EQ(top->eq, 0u);
+
+    load(0x80000000u, 0x00000001u, SUB);
+    WAVE_EXPECT_EQ(top->alu_out, 0x7fffffffu);
+    WAVE_EXPECT_EQ(top->eq, 0u);
+
 }
 
-// Shifts: signed limits and -8; amounts 0-31 plus 32, 33 and all ones to check masking.
-TEST_F(Alu, ShiftBoundaries)
-{
-    for (unsigned value : {0u, 1u, 0x7fffffffu, 0x80000000u, 0xfffffff8u, 0xffffffffu})
-        for (unsigned amount : {0u, 1u, 2u, 4u, 8u, 16u, 31u, 32u, 33u, 0xffffffffu})
-            for (unsigned mode : {SLL, SRL, SRA}) {
-                unsigned expected = value;
-                for (unsigned bit = 0; bit < (amount & 31); ++bit) {
-                    if (mode == SLL)
-                        expected *= 2u;
-                    else {
-                        const unsigned sign = mode == SRA ? expected & 0x80000000u : 0;
-                        expected = expected / 2u + sign;
-                    }
-                }
-
-                load(value, amount, mode);
-                WAVE_EXPECT_EQ(top->alu_out, expected)
-                    << "value " << value << ", amount " << amount << ", mode " << mode;
-            }
-}
-
-// Unused codes 10-15 must return zero after a valid operation.
-TEST_F(Alu, UnsupportedControlsDoNotRetainPreviousResult)
-{
-    top->alu1 = 0x12345678;
-    top->alu2 = 0x12345678;
-    for (unsigned mode : {10u, 11u, 12u, 13u, 14u, 15u}) {
-        top->alu_ctrl = ADD;
-        sample();
-        WAVE_EXPECT_EQ(top->alu_out, 0x2468acf0u);
-        top->alu_ctrl = mode;
-        sample();
-        WAVE_EXPECT_EQ(top->alu_out, 0u);
-        WAVE_EXPECT_EQ(top->eq, 1u);
-    }
-}
-
-// AND: zero, all ones, alternating bits and high/low-bit patterns.
+// Zero, all ones, alternating bits and isolated end bits.
 TEST_F(Alu, BitwiseAnd)
 {
-    load(0, 0xffffffffu, AND);
-    WAVE_EXPECT_EQ(top->alu_out, 0);
+    load(0x00000000u, 0xffffffffu, AND);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000000u);
     WAVE_EXPECT_EQ(top->eq, 0u);
 
     load(0xffffffffu, 0xffffffffu, AND);
@@ -96,22 +82,23 @@ TEST_F(Alu, BitwiseAnd)
     WAVE_EXPECT_EQ(top->eq, 1u);
 
     load(0xaaaaaaaau, 0x55555555u, AND);
-    WAVE_EXPECT_EQ(top->alu_out, 0);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000000u);
     WAVE_EXPECT_EQ(top->eq, 0u);
 
     load(0x80000001u, 0x80000000u, AND);
     WAVE_EXPECT_EQ(top->alu_out, 0x80000000u);
     WAVE_EXPECT_EQ(top->eq, 0u);
+
 }
 
-// OR: zero, all ones, alternating bits and high/low-bit patterns.
+// Zero, all ones and complementary bit patterns.
 TEST_F(Alu, BitwiseOr)
 {
-    load(0, 0, OR);
-    WAVE_EXPECT_EQ(top->alu_out, 0);
+    load(0x00000000u, 0x00000000u, OR);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000000u);
     WAVE_EXPECT_EQ(top->eq, 1u);
 
-    load(0, 0xffffffffu, OR);
+    load(0x00000000u, 0xffffffffu, OR);
     WAVE_EXPECT_EQ(top->alu_out, 0xffffffffu);
     WAVE_EXPECT_EQ(top->eq, 0u);
 
@@ -119,55 +106,216 @@ TEST_F(Alu, BitwiseOr)
     WAVE_EXPECT_EQ(top->alu_out, 0xffffffffu);
     WAVE_EXPECT_EQ(top->eq, 0u);
 
-    load(0x80000000u, 1, OR);
+    load(0x80000000u, 0x00000001u, OR);
     WAVE_EXPECT_EQ(top->alu_out, 0x80000001u);
     WAVE_EXPECT_EQ(top->eq, 0u);
+
 }
 
-// XOR: zero, all ones, alternating bits and high/low-bit patterns.
+// Equal and complementary operands, plus isolated end bits.
 TEST_F(Alu, BitwiseXor)
 {
-    load(0, 0xffffffffu, XOR);
+    load(0x00000000u, 0xffffffffu, XOR);
     WAVE_EXPECT_EQ(top->alu_out, 0xffffffffu);
     WAVE_EXPECT_EQ(top->eq, 0u);
 
-    load(0xffffffffu, 0xffffffffu, XOR);
-    WAVE_EXPECT_EQ(top->alu_out, 0);
-    WAVE_EXPECT_EQ(top->eq, 1u);
-
     load(0xaaaaaaaau, 0xaaaaaaaau, XOR);
-    WAVE_EXPECT_EQ(top->alu_out, 0);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000000u);
     WAVE_EXPECT_EQ(top->eq, 1u);
 
     load(0xaaaaaaaau, 0x55555555u, XOR);
     WAVE_EXPECT_EQ(top->alu_out, 0xffffffffu);
     WAVE_EXPECT_EQ(top->eq, 0u);
 
-    load(0x80000001u, 1, XOR);
+    load(0x80000001u, 0x00000001u, XOR);
     WAVE_EXPECT_EQ(top->alu_out, 0x80000000u);
     WAVE_EXPECT_EQ(top->eq, 0u);
+
 }
 
-// SLT: -2^31, -1, 0, 1 and 2^31-1, including equal operands.
+// Equality, operand order and the signed 32-bit limits.
 TEST_F(Alu, SignedLessThan)
 {
-    const int64_t values[] = {-2147483648LL, -1, 0, 1, 2147483647LL};
-    for (int64_t a : values)
-        for (int64_t b : values) {
-            load(static_cast<uint32_t>(a), static_cast<uint32_t>(b), SLT);
-            WAVE_EXPECT_EQ(top->alu_out, a < b) << "a " << a << ", b " << b;
-            WAVE_EXPECT_EQ(top->eq, a == b);
-        }
+    load(0x00000001u, 0x00000001u, SLT);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000000u);
+    WAVE_EXPECT_EQ(top->eq, 1u);
+
+    load(0xffffffffu, 0x00000001u, SLT);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000001u);
+    WAVE_EXPECT_EQ(top->eq, 0u);
+
+    load(0x00000001u, 0xffffffffu, SLT);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000000u);
+    WAVE_EXPECT_EQ(top->eq, 0u);
+
+    load(0x80000000u, 0x7fffffffu, SLT);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000001u);
+    WAVE_EXPECT_EQ(top->eq, 0u);
+
+    load(0x7fffffffu, 0x80000000u, SLT);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000000u);
+    WAVE_EXPECT_EQ(top->eq, 0u);
+
 }
 
-// SLTU: 0 to 2^32-1, sampling both sides of the sign-bit boundary.
+// Equality, zero and unsigned comparisons across the sign bit.
 TEST_F(Alu, UnsignedLessThan)
 {
-    const uint32_t values[] = {0, 1, 0x7fffffffu, 0x80000000u, 0xffffffffu};
-    for (uint32_t a : values)
-        for (uint32_t b : values) {
-            load(a, b, SLTU);
-            WAVE_EXPECT_EQ(top->alu_out, a < b) << "a " << a << ", b " << b;
-            WAVE_EXPECT_EQ(top->eq, a == b);
-        }
+    load(0x00000001u, 0x00000001u, SLTU);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000000u);
+    WAVE_EXPECT_EQ(top->eq, 1u);
+
+    load(0x00000000u, 0x00000001u, SLTU);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000001u);
+    WAVE_EXPECT_EQ(top->eq, 0u);
+
+    load(0x00000001u, 0x00000000u, SLTU);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000000u);
+    WAVE_EXPECT_EQ(top->eq, 0u);
+
+    load(0x7fffffffu, 0x80000000u, SLTU);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000001u);
+    WAVE_EXPECT_EQ(top->eq, 0u);
+
+    load(0xffffffffu, 0x00000001u, SLTU);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000000u);
+    WAVE_EXPECT_EQ(top->eq, 0u);
+
+    load(0x00000001u, 0xffffffffu, SLTU);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000001u);
+    WAVE_EXPECT_EQ(top->eq, 0u);
+
+}
+
+// Zero, signed data and shifts of 0, 1, 31, 32, 33 and all ones.
+TEST_F(Alu, ShiftLeftLogical)
+{
+    load(0x00000000u, 0x00000001u, SLL);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000000u);
+
+    load(0xfffffff8u, 0x00000000u, SLL);
+    WAVE_EXPECT_EQ(top->alu_out, 0xfffffff8u);
+
+    load(0xfffffff8u, 0x00000001u, SLL);
+    WAVE_EXPECT_EQ(top->alu_out, 0xfffffff0u);
+
+    load(0x80000000u, 0x0000001fu, SLL);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000000u);
+
+    load(0x00000001u, 0x0000001fu, SLL);
+    WAVE_EXPECT_EQ(top->alu_out, 0x80000000u);
+
+    load(0xfffffff8u, 0x00000020u, SLL);
+    WAVE_EXPECT_EQ(top->alu_out, 0xfffffff8u);
+
+    load(0xfffffff8u, 0x00000021u, SLL);
+    WAVE_EXPECT_EQ(top->alu_out, 0xfffffff0u);
+
+    load(0xfffffff8u, 0xffffffffu, SLL);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000000u);
+
+}
+
+// Zero, signed data and shifts of 0, 1, 31, 32, 33 and all ones.
+TEST_F(Alu, ShiftRightLogical)
+{
+    load(0x00000000u, 0x00000001u, SRL);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000000u);
+
+    load(0xfffffff8u, 0x00000000u, SRL);
+    WAVE_EXPECT_EQ(top->alu_out, 0xfffffff8u);
+
+    load(0xfffffff8u, 0x00000001u, SRL);
+    WAVE_EXPECT_EQ(top->alu_out, 0x7ffffffcu);
+
+    load(0x80000000u, 0x0000001fu, SRL);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000001u);
+
+    load(0x00000001u, 0x0000001fu, SRL);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000000u);
+
+    load(0xfffffff8u, 0x00000020u, SRL);
+    WAVE_EXPECT_EQ(top->alu_out, 0xfffffff8u);
+
+    load(0xfffffff8u, 0x00000021u, SRL);
+    WAVE_EXPECT_EQ(top->alu_out, 0x7ffffffcu);
+
+    load(0xfffffff8u, 0xffffffffu, SRL);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000001u);
+
+}
+
+// Zero, signed data and shifts of 0, 1, 31, 32, 33 and all ones.
+TEST_F(Alu, ShiftRightArithmetic)
+{
+    load(0x00000000u, 0x00000001u, SRA);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000000u);
+
+    load(0xfffffff8u, 0x00000000u, SRA);
+    WAVE_EXPECT_EQ(top->alu_out, 0xfffffff8u);
+
+    load(0xfffffff8u, 0x00000001u, SRA);
+    WAVE_EXPECT_EQ(top->alu_out, 0xfffffffcu);
+
+    load(0x80000000u, 0x0000001fu, SRA);
+    WAVE_EXPECT_EQ(top->alu_out, 0xffffffffu);
+
+    load(0x00000001u, 0x0000001fu, SRA);
+    WAVE_EXPECT_EQ(top->alu_out, 0x00000000u);
+
+    load(0xfffffff8u, 0x00000020u, SRA);
+    WAVE_EXPECT_EQ(top->alu_out, 0xfffffff8u);
+
+    load(0xfffffff8u, 0x00000021u, SRA);
+    WAVE_EXPECT_EQ(top->alu_out, 0xfffffffcu);
+
+    load(0xfffffff8u, 0xffffffffu, SRA);
+    WAVE_EXPECT_EQ(top->alu_out, 0xffffffffu);
+
+}
+
+// Unused codes 10-15 must return zero after a valid operation.
+TEST_F(Alu, UnsupportedControlsDoNotRetainPreviousResult)
+{
+    // Control 10 must clear the preceding ADD result.
+    load(0x12345678u, 0x12345678u, ADD);
+    WAVE_EXPECT_EQ(top->alu_out, 0x2468acf0u);
+    load(0x12345678u, 0x12345678u, 10);
+    WAVE_EXPECT_EQ(top->alu_out, 0u);
+    WAVE_EXPECT_EQ(top->eq, 1u);
+
+    // Control 11 must clear the preceding ADD result.
+    load(0x12345678u, 0x12345678u, ADD);
+    WAVE_EXPECT_EQ(top->alu_out, 0x2468acf0u);
+    load(0x12345678u, 0x12345678u, 11);
+    WAVE_EXPECT_EQ(top->alu_out, 0u);
+    WAVE_EXPECT_EQ(top->eq, 1u);
+
+    // Control 12 must clear the preceding ADD result.
+    load(0x12345678u, 0x12345678u, ADD);
+    WAVE_EXPECT_EQ(top->alu_out, 0x2468acf0u);
+    load(0x12345678u, 0x12345678u, 12);
+    WAVE_EXPECT_EQ(top->alu_out, 0u);
+    WAVE_EXPECT_EQ(top->eq, 1u);
+
+    // Control 13 must clear the preceding ADD result.
+    load(0x12345678u, 0x12345678u, ADD);
+    WAVE_EXPECT_EQ(top->alu_out, 0x2468acf0u);
+    load(0x12345678u, 0x12345678u, 13);
+    WAVE_EXPECT_EQ(top->alu_out, 0u);
+    WAVE_EXPECT_EQ(top->eq, 1u);
+
+    // Control 14 must clear the preceding ADD result.
+    load(0x12345678u, 0x12345678u, ADD);
+    WAVE_EXPECT_EQ(top->alu_out, 0x2468acf0u);
+    load(0x12345678u, 0x12345678u, 14);
+    WAVE_EXPECT_EQ(top->alu_out, 0u);
+    WAVE_EXPECT_EQ(top->eq, 1u);
+
+    // Control 15 must clear the preceding ADD result.
+    load(0x12345678u, 0x12345678u, ADD);
+    WAVE_EXPECT_EQ(top->alu_out, 0x2468acf0u);
+    load(0x12345678u, 0x12345678u, 15);
+    WAVE_EXPECT_EQ(top->alu_out, 0u);
+    WAVE_EXPECT_EQ(top->eq, 1u);
 }

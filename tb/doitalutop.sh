@@ -1,7 +1,4 @@
 #!/bin/bash
+# The integrated datapath is now in top.sv.
 set -eu
-cd "$(dirname "$0")"
-result=0
-bash doit.sh tests/alu_top_tb.cpp || result=$?
-python3 merge_status.py waves/alu_top
-exit "$result"
+bash "$(dirname "$0")/doit-wsl.sh" tests/cpu_regression_tb.cpp

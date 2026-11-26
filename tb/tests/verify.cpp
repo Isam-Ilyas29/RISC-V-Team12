@@ -1,148 +1,61 @@
-#include "cpu_testbench.h"
 #include <cstdlib>
-#include <cstdint>
+#include <utility>
+
+#include "cpu_testbench.h"
 
 unsigned int ticks = 0;
 
-// Check ADD/SUB selection and ADDI immediates from -2048 to 2047.
-TEST_F(CpuTestbench, ArithmeticDecode)
+#define CYCLES 10000
+
+// Run the supplied counter loop and expect 254.
+TEST_F(CpuTestbench, TestAddiBne)
 {
-    WAVE_ASSERT_EQ(std::system("./compile.sh asm/arithmetic_decode.S"), 0);
-    reset();
-    const int32_t expected[] = {0, 0, 0, 10, 4, 1028, 1027, -1021, 1026};
-    for (int32_t value : expected)
-        WAVE_ASSERT_EQ(step(), static_cast<uint32_t>(value)) << "cycle " << ticks;
+    ASSERT_NO_FATAL_FAILURE(setupTest("1_addi_bne"));
+    ASSERT_NO_FATAL_FAILURE(initSimulation());
+    ASSERT_NO_FATAL_FAILURE(runSimulation(CYCLES));
+    WAVE_EXPECT_EQ(top->a0, 254);
 }
 
-// Run the ADDI/BNE program and check a0 after each instruction and after reset.
-TEST_F(CpuTestbench, AddiAndBne)
+// Run the supplied LI/ADD program and expect 1000.
+TEST_F(CpuTestbench, TestLiAdd)
 {
-    WAVE_ASSERT_EQ(std::system("./compile.sh asm/addi_bne.S"), 0);
-    reset();
-
-    const int32_t expected[] = {
-        -2048, -1, -1, 0,
-        0, -366, -366, -366, -366, 0, -1
-    };
-    for (int32_t value : expected)
-        WAVE_ASSERT_EQ(step(), static_cast<uint32_t>(value)) << "cycle " << ticks;
-
-    reset();
-    WAVE_ASSERT_EQ(step(), 0xfffff800u) << "first instruction after reset";
+    ASSERT_NO_FATAL_FAILURE(setupTest("2_li_add"));
+    ASSERT_NO_FATAL_FAILURE(initSimulation());
+    ASSERT_NO_FATAL_FAILURE(runSimulation(CYCLES));
+    WAVE_EXPECT_EQ(top->a0, 1000);
 }
 
-// Run the counter program and check a0 through its loop and restart.
-TEST_F(CpuTestbench, BaseProgramTest)
+// Store and load two bytes, then expect their sum of 300.
+TEST_F(CpuTestbench, TestLbuSb)
 {
-    WAVE_ASSERT_EQ(std::system("./compile.sh asm/program.S"), 0);
-    reset();
-
-    step();
-    WAVE_ASSERT_EQ(step(), 0u);
-    WAVE_ASSERT_EQ(step(), 0u);
-
-    // Each inner loop executes addi a0, addi a1, then bne.
-    for (unsigned count = 0; count < 255; ++count)
-        for (int cycle = 0; cycle < 3; ++cycle)
-            WAVE_ASSERT_EQ(step(), count) << "cycle " << ticks;
-
-    for (unsigned value : {254u, 254u, 0u, 0u, 0u, 1u})
-        WAVE_ASSERT_EQ(step(), value) << "cycle " << ticks;
+    ASSERT_NO_FATAL_FAILURE(setupTest("3_lbu_sb"));
+    ASSERT_NO_FATAL_FAILURE(initSimulation());
+    ASSERT_NO_FATAL_FAILURE(runSimulation(CYCLES));
+    WAVE_EXPECT_EQ(top->a0, 300);
 }
 
-// Run all six branch instructions and check the expected a0 sequence.
-TEST_F(CpuTestbench, AllBranchInstructions)
+// Run the supplied call/return program and expect 53.
+TEST_F(CpuTestbench, TestJalRet)
 {
-    WAVE_ASSERT_EQ(std::system("./compile.sh asm/branches.S"), 0);
-    reset();
-    const uint32_t expected[] = {
-        0, 0, 0, 0, 2, 2, 2, 2, 3, 5, 5, 5,
-        5, 7, 7, 7, 7, 8, 10, 10, 10, 10, 12, 12,
-        12, 12, 13, 15, 15, 15, 15, 17, 17, 17, 17, 18,
-        20, 20, 20, 20, 22, 22, 22, 22, 23, 25, 25, 25,
-        25, 27, 27, 27, 27, 28, 30, 30, 30, 30, 31, 31,
-        31, 32, 32, 32, 32, 32, 33, 33, 33, 34, 34, 34,
-        34, 34, 35, 35, 35, 36, 36, 36, 36, 36, 37, 37,
-        37, 38, 38, 38, 38, 38, 39, 39, 39, 40, 40, 40,
-        40, 40, 41, 41, 41, 42, 42, 43,
-    };
-    for (uint32_t value : expected)
-        WAVE_ASSERT_EQ(step(), value) << "cycle " << ticks;
+    ASSERT_NO_FATAL_FAILURE(setupTest("4_jal_ret"));
+    ASSERT_NO_FATAL_FAILURE(initSimulation());
+    ASSERT_NO_FATAL_FAILURE(runSimulation(CYCLES));
+    WAVE_EXPECT_EQ(top->a0, 53);
 }
 
-// Run register and immediate shifts, checking masking, sign extension and x0.
-TEST_F(CpuTestbench, ShiftInstructions)
+// Build the supplied Gaussian histogram and expect a bin sum of 15363.
+TEST_F(CpuTestbench, TestPdf)
 {
-    WAVE_ASSERT_EQ(std::system("./compile.sh asm/shifts.S"), 0);
-    reset();
-    const uint32_t expected[] = {
-        0x00000000u, 0x00000000u, 0xfffffff8u, 0xfffffff0u, 0x00000000u, 0xfffffff8u, 0x7ffffffcu, 0x00000001u,
-        0xfffffff8u, 0xfffffffcu, 0xffffffffu, 0xffffffffu, 0xfffffff8u, 0xfffffff8u, 0xfffffff0u, 0xfffffff0u,
-        0x00000000u, 0x00000000u, 0xfffffff8u, 0xfffffff8u, 0xfffffff0u, 0xfffffff0u, 0x00000000u, 0x00000000u,
-        0xfffffff8u, 0xfffffff8u, 0x7ffffffcu, 0x7ffffffcu, 0x00000001u, 0x00000001u, 0xfffffff8u, 0xfffffff8u,
-        0x7ffffffcu, 0x7ffffffcu, 0x00000001u, 0x00000001u, 0xfffffff8u, 0xfffffff8u, 0xfffffffcu, 0xfffffffcu,
-        0xffffffffu, 0xffffffffu, 0xfffffff8u, 0xfffffff8u, 0xfffffffcu, 0xfffffffcu, 0xffffffffu, 0x00000001u,
-        0x80000000u, 0xffffffffu, 0xffffffffu, 0x00000000u
-    };
-    for (uint32_t value : expected)
-        WAVE_ASSERT_EQ(step(), value) << "cycle " << ticks;
-}
-
-// Check forward and backward jumps, return addresses and JALR returns.
-TEST_F(CpuTestbench, JumpInstructions)
-{
-    WAVE_ASSERT_EQ(std::system("./compile.sh asm/jumps.S"), 0);
-    reset();
-    const uint32_t expected[] = {0, 0, 8, 8, 8, 28, 28, 28, 44, 44, 45, 45,
-                                 45, 45, 76, 76, 77, 77, 77};
-    for (uint32_t value : expected)
-        WAVE_ASSERT_EQ(step(), value) << "cycle " << ticks;
-}
-
-// Store and load words, checking that loaded data reaches the correct register.
-TEST_F(CpuTestbench, LoadStoreWriteback)
-{
-    WAVE_ASSERT_EQ(std::system("./compile.sh asm/memory.S"), 0);
-    reset();
-    const uint32_t expected[] = {0, 0, 0, 0, 0, 123, 123, 123, 123, 0xffffffffu};
-    for (uint32_t value : expected)
-        WAVE_ASSERT_EQ(step(), value) << "cycle " << ticks;
-}
-
-// Check signed/unsigned byte and halfword loads, and preserve bytes outside each store.
-TEST_F(CpuTestbench, ByteAndHalfwordTransfers)
-{
-    WAVE_ASSERT_EQ(std::system("./compile.sh asm/partial_memory.S"), 0);
-    reset();
-    const uint32_t expected[] = {
-        0, 0, 0, 0, 0, 0,
-        0xffffff80u, 0x80u, 0xffff80ffu,
-        0xffff80ffu, 0xffff80ffu, 0xffff80ffu,
-        0x800080ffu, 0xffff8000u, 0x8000u, 0xffffffffu, 0xffu,
-        0xffu, 0xffu, 0x7fu, 0x7fu, 0x7fffu, 0x7fffu, 0x80007fffu
-    };
-    for (uint32_t value : expected)
-        WAVE_ASSERT_EQ(step(), value) << "cycle " << ticks;
-}
-
-// Run shifts, memory operations, branches and jumps together for the overview waveform.
-TEST_F(CpuTestbench, Overview)
-{
-    WAVE_ASSERT_EQ(std::system("./compile.sh asm/overview.S"), 0);
-    reset();
-    const uint32_t expected[] = {
-        0, 0, 0, 0xfffffff0u, 0x7ffffffcu, 0xfffffffcu,
-        0xfffffff0u, 0x7ffffffcu, 0xfffffffcu, 0xfffffffcu, 0, 0xfffffffcu,
-        0xfffffffcu, 0xfffffffcu, 0xfffffffcu, 0xfffffffcu, 0xfffffffcu, 0xfffffffcu,
-        0xfffffffcu, 0xfffffffdu, 0xfffffffdu, 0xfffffffeu, 0xfffffffeu,
-        0xfffffffeu, 0xfffffffeu
-    };
-    for (uint32_t value : expected)
-        WAVE_ASSERT_EQ(step(), value) << "cycle " << ticks;
+    ASSERT_NO_FATAL_FAILURE(setupTest("5_pdf"));
+    ASSERT_NO_FATAL_FAILURE(setData("reference/gaussian.mem"));
+    ASSERT_NO_FATAL_FAILURE(initSimulation());
+    ASSERT_NO_FATAL_FAILURE(runSimulation(CYCLES * 100));
+    WAVE_EXPECT_EQ(top->a0, 15363);
 }
 
 int main(int argc, char **argv)
 {
     testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+    auto res = RUN_ALL_TESTS();
+    return res;
 }

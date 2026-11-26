@@ -1,66 +1,75 @@
 #!/bin/bash
-# Run from Windows through WSL: bash tb/doit.sh
-set -eu
-cd "$(dirname "$0")"
 
-if [[ -f "$HOME/.local/include/gtest/gtest.h" ]]; then
-    export CPLUS_INCLUDE_PATH="$HOME/.local/include${CPLUS_INCLUDE_PATH:+:$CPLUS_INCLUDE_PATH}"
-    export LIBRARY_PATH="$HOME/.local/lib${LIBRARY_PATH:+:$LIBRARY_PATH}"
+# This script runs the testbench
+# Usage: ./doit.sh <file1.cpp> <file2.cpp>
+
+# Constants
+SCRIPT_DIR=$(dirname "$(realpath "$0")")
+TEST_FOLDER=$(realpath "$SCRIPT_DIR/tests")
+RTL_FOLDER=$(realpath "$SCRIPT_DIR/../rtl")
+GREEN=$(tput setaf 2)
+RED=$(tput setaf 1)
+RESET=$(tput sgr0)
+
+# Variables
+passes=0
+fails=0
+
+# Handle terminal arguments
+if [[ $# -eq 0 ]]; then
+    # If no arguments provided, run all tests
+    files=(${TEST_FOLDER}/*.cpp)
+else
+    # If arguments provided, use them as input files
+    files=("$@")
 fi
 
-build_root=obj_dir
-saved_program=$(mktemp)
-cp ../rtl/program.hex "$saved_program"
-cleanup() {
-    cp "$saved_program" ../rtl/program.hex
-    rm -f -- "$saved_program"
-    if [[ $build_root != obj_dir ]]; then rm -rf -- "$build_root"; fi
-}
-trap cleanup EXIT
-if [[ $PWD == *" "* ]]; then
-    build_root=$(mktemp -d)
-fi
+cd $SCRIPT_DIR
 
-run_suite() {
-    local file=$1 name=$2 module=$2
-    local rtl="../rtl/$name.sv"
-    local extra=()
-    local parameters=()
-    case "$name" in
-        data_mem) parameters=('-GINIT_FILE="tests/data.hex"') ;;
-        reg_file) rtl=../rtl/alu_reg_file.sv ;;
-        top) extra=(../rtl/alu_reg_file.sv) ;;
-        alu_top) extra=(../rtl/alu_reg_file.sv) ;;
-        lab4_cpu) rtl=lab4_cpu.sv; extra=(../rtl/alu_top.sv ../rtl/alu_reg_file.sv) ;;
-    esac
-    local build="$build_root/$name"
-    export WAVE_DIR="waves/$name"
-    mkdir -p "$build" "$WAVE_DIR" || return 1
-    ln -sfn "$(realpath "$(dirname "$file")")" "$build/tests" || return 1
-    verilator -Wall -Wno-fatal --trace --Mdir "$build" --top-module "$module" \
-        -cc "$rtl" "${extra[@]}" "${parameters[@]}" -y ../rtl --exe "tests/$(basename "$file")" \
-        --prefix Vdut -o Vdut -LDFLAGS "-lgtest -lgtest_main -lpthread" || return 1
-    make -j -C "$build" -f Vdut.mk || return 1
-    local result=0
-    "$build/Vdut" || result=$?
-    python3 merge_status.py "$WAVE_DIR" || return 1
-    return "$result"
-}
+# Wipe previous test output
+rm -rf test_out/*
 
-files=("$@")
-if (( $# == 0 )); then
-    files=()
-    for file in tests/*.cpp; do
-        [[ $file == tests/control_unit_tb.cpp ]] || files+=("$file")
-    done
-fi
-status=0
+# Iterate through files
 for file in "${files[@]}"; do
-    name=$(basename "$file" _tb.cpp | cut -f1 -d-)
-    case "$name" in
-        verify.cpp) name=top ;;
-        lab4_cpu) file=tests/verify.cpp ;;
-    esac
-    run_suite "$file" "$name" || status=1
+    name=$(basename "$file" _tb.cpp | cut -f1 -d\-)
+
+    # If verify.cpp -> we are testing the top module
+    if [ $name == "verify.cpp" ] || [ $name == "cpu_regression" ]; then
+        name="top"
+    fi
+
+    module="$name"
+    extra_rtl=()
+    if [ $name == "pc" ]; then
+        module="program_counter"
+    fi
+    if [ $name == "top" ]; then
+        extra_rtl=("$RTL_FOLDER/pc.sv")
+    fi
+
+    # Translate Verilog -> C++ including testbench
+    verilator   -Wall --trace --top-module "$module" \
+                -cc ${RTL_FOLDER}/${name}.sv "${extra_rtl[@]}" \
+                --exe ${file} \
+                -y ${RTL_FOLDER} \
+                --prefix "Vdut" \
+                -o Vdut \
+                -LDFLAGS "-lgtest -lgtest_main -lpthread"
+
+    # Build C++ project with automatically generated Makefile
+    make -j -C obj_dir/ -f Vdut.mk
+
+    # Run executable simulation file
+    ./obj_dir/Vdut
+
+    # Check if the test succeeded or not
+    if [ $? -eq 0 ]; then
+        ((passes++))
+    else
+        ((fails++))
+    fi
+
 done
-exit "$status"
+
+# Save obj_dir in test_out
+mv obj_dir test_out/

@@ -13,7 +13,7 @@
 #include "verilated_vcd_c.h"
 #include "gtest/gtest.h"
 
-#define MAX_SIM_CYCLES 10000
+#define MAX_SIM_CYCLES 1010000
 
 extern unsigned int ticks;
 
@@ -26,12 +26,7 @@ public:
         tfp = std::make_unique<VerilatedVcdC>();
         Verilated::traceEverOn(true);
         top->trace(tfp.get(), 99);
-        const auto *test = ::testing::UnitTest::GetInstance()->current_test_info();
-        const char *dir = std::getenv("WAVE_DIR");
-        const std::filesystem::path directory = dir ? dir : ".";
-        std::filesystem::create_directories(directory);
-        const std::string filename = std::string(test->test_suite_name()) + "." + test->name() + ".vcd";
-        const std::string path = (directory / filename).string();
+        const std::string path = waveformPath();
         tfp->open(path.c_str());
         ASSERT_TRUE(tfp->isOpen()) << "Cannot open trace: " << path;
         status.open(path + ".status");
@@ -59,6 +54,16 @@ public:
     virtual void initializeInputs() {}
 
 protected:
+    virtual std::string waveformPath()
+    {
+        const auto *test = ::testing::UnitTest::GetInstance()->current_test_info();
+        const char *dir = std::getenv("WAVE_DIR");
+        const std::filesystem::path directory = dir ? dir : ".";
+        std::filesystem::create_directories(directory);
+        const std::string filename = std::string(test->test_suite_name()) + "." + test->name() + ".vcd";
+        return (directory / filename).string();
+    }
+
 
     void sample()
     {

@@ -1,12 +1,7 @@
 #!/bin/bash
 set -eu
 cd "$(dirname "$0")"
-
-saved_program=$(mktemp)
-cp ../rtl/program.hex "$saved_program"
-trap 'cp "$saved_program" ../rtl/program.hex; rm -f "$saved_program"' EXIT
-GTEST_FILTER=CpuTestbench.Overview bash doit.sh tests/verify.cpp
-
+GTEST_FILTER=CpuRegression.Overview bash doit-wsl.sh tests/cpu_regression_tb.cpp
 if [[ ${1:-} == --open ]]; then
-    gtkwave waves/top/CpuTestbench.Overview.vcd overview.gtkw
+    gtkwave test_out/overview/waveform.vcd overview.gtkw
 fi

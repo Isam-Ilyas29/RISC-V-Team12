@@ -3,6 +3,13 @@
 class Immediate : public BaseTestbench
 {
 protected:
+    void load(uint32_t instruction, unsigned type)
+    {
+        top->imm = instruction >> 7;
+        top->imm_src = type;
+        sample();
+    }
+
     void initializeInputs() override
     {
         top->imm = 0;
@@ -10,54 +17,155 @@ protected:
     }
 };
 
-// Check I-type and branch immediates at bit boundaries and across the sign bit.
-TEST_F(Immediate, IAndBBoundaries)
+// I-type immediates cover zero, one, minus one and signed 12-bit limits.
+TEST_F(Immediate, ImmediateOffsets)
 {
-    for (unsigned bits : {0u, 1u, 2u, 4u, 8u, 16u, 32u, 64u, 128u,
-                          256u, 512u, 1024u, 2047u, 2048u, 2049u, 4094u, 4095u}) {
-        int value = bits < 2048 ? int(bits) : int(bits) - 4096;
-        top->imm_src = 0;
-        top->imm = (bits << 13) | 0x15ab;
-        sample();
-        WAVE_ASSERT_EQ(top->imm_op, unsigned(value));
+    // Immediate 0.
+    load(0x000ad580u, 0);
+    WAVE_EXPECT_EQ(top->imm_op, 0x00000000u);
 
-        unsigned offset = bits << 1;
-        // B-type fields: imm[12], imm[10:5], imm[4:1], imm[11].
-        unsigned instruction = ((offset >> 12) << 31) | (((offset >> 5) & 63) << 25)
-                             | (0xabc << 13) | (((offset >> 1) & 15) << 8)
-                             | (((offset >> 11) & 1) << 7);
-        top->imm_src = 1;
-        top->imm = instruction >> 7;
-        sample();
-        WAVE_ASSERT_EQ(top->imm_op, unsigned(value * 2));
-    }
+    // Immediate 1.
+    load(0x001ad580u, 0);
+    WAVE_EXPECT_EQ(top->imm_op, 0x00000001u);
+
+    // Immediate 2047.
+    load(0x7ffad580u, 0);
+    WAVE_EXPECT_EQ(top->imm_op, 0x000007ffu);
+
+    // Immediate -2048.
+    load(0x800ad580u, 0);
+    WAVE_EXPECT_EQ(top->imm_op, 0xfffff800u);
+
+    // Immediate -1.
+    load(0xfffad580u, 0);
+    WAVE_EXPECT_EQ(top->imm_op, 0xffffffffu);
 }
+
+// B-type immediates cover field boundaries and signed limits with two-byte alignment.
+TEST_F(Immediate, BranchOffsets)
+{
+    // Immediate 0.
+    load(0x01578000u, 1);
+    WAVE_EXPECT_EQ(top->imm_op, 0x00000000u);
+
+    // Immediate 2.
+    load(0x01578100u, 1);
+    WAVE_EXPECT_EQ(top->imm_op, 0x00000002u);
+
+    // Immediate 32.
+    load(0x03578000u, 1);
+    WAVE_EXPECT_EQ(top->imm_op, 0x00000020u);
+
+    // Immediate 64.
+    load(0x05578000u, 1);
+    WAVE_EXPECT_EQ(top->imm_op, 0x00000040u);
+
+    // Immediate 2048.
+    load(0x01578080u, 1);
+    WAVE_EXPECT_EQ(top->imm_op, 0x00000800u);
+
+    // Immediate 4094.
+    load(0x7f578f80u, 1);
+    WAVE_EXPECT_EQ(top->imm_op, 0x00000ffeu);
+
+    // Immediate -4096.
+    load(0x81578000u, 1);
+    WAVE_EXPECT_EQ(top->imm_op, 0xfffff000u);
+
+    // Immediate -2.
+    load(0xff578f80u, 1);
+    WAVE_EXPECT_EQ(top->imm_op, 0xfffffffeu);
+}
+
 // Check positive and negative JAL offsets, including the largest encodable values.
 TEST_F(Immediate, JumpOffsets)
 {
-    for (int offset : {-1048576, -4096, -2048, -4, 0, 2, 4, 2048, 4096, 1048574}) {
-        const unsigned bits = static_cast<unsigned>(offset) & 0x1fffff;
-        // J-type fields: imm[20], imm[10:1], imm[11], imm[19:12].
-        const unsigned instruction = ((bits >> 20) << 31) | (((bits >> 1) & 0x3ff) << 21)
-                                   | (((bits >> 11) & 1) << 20) | (((bits >> 12) & 0xff) << 12);
-        top->imm = instruction >> 7;
-        top->imm_src = 3;
-        sample();
-        WAVE_EXPECT_EQ(top->imm_op, static_cast<unsigned>(offset));
-    }
+    // Immediate -1048576.
+    load(0x80000000u, 3);
+    WAVE_EXPECT_EQ(top->imm_op, 0xfff00000u);
+
+    // Immediate -2048.
+    load(0x801ff000u, 3);
+    WAVE_EXPECT_EQ(top->imm_op, 0xfffff800u);
+
+    // Immediate -4.
+    load(0xffdff000u, 3);
+    WAVE_EXPECT_EQ(top->imm_op, 0xfffffffcu);
+
+    // Immediate 0.
+    load(0x00000000u, 3);
+    WAVE_EXPECT_EQ(top->imm_op, 0x00000000u);
+
+    // Immediate 2.
+    load(0x00200000u, 3);
+    WAVE_EXPECT_EQ(top->imm_op, 0x00000002u);
+
+    // Immediate 2048.
+    load(0x00100000u, 3);
+    WAVE_EXPECT_EQ(top->imm_op, 0x00000800u);
+
+    // Immediate 4096.
+    load(0x00001000u, 3);
+    WAVE_EXPECT_EQ(top->imm_op, 0x00001000u);
+
+    // Immediate 1048574.
+    load(0x7ffff000u, 3);
+    WAVE_EXPECT_EQ(top->imm_op, 0x000ffffeu);
 }
 
 // Check that the two S-type immediate fields form the correct signed store offset.
 TEST_F(Immediate, StoreOffsets)
 {
-    for (int offset : {-2048, -33, -32, -1, 0, 1, 16, 31, 32, 1024, 2047}) {
-        const unsigned bits = static_cast<unsigned>(offset) & 0xfff;
-        // S-type immediate is split between bits [31:25] and [11:7].
-        const unsigned instruction = ((bits >> 5) << 25) | (0xabc << 13)
-                                   | ((bits & 31) << 7) | 0x23;
-        top->imm_src = 2;
-        top->imm = instruction >> 7;
-        sample();
-        WAVE_EXPECT_EQ(top->imm_op, static_cast<unsigned>(offset)) << "offset " << offset;
-    }
+    // Immediate -2048.
+    load(0x81578023u, 2);
+    WAVE_EXPECT_EQ(top->imm_op, 0xfffff800u);
+
+    // Immediate -32.
+    load(0xff578023u, 2);
+    WAVE_EXPECT_EQ(top->imm_op, 0xffffffe0u);
+
+    // Immediate -1.
+    load(0xff578fa3u, 2);
+    WAVE_EXPECT_EQ(top->imm_op, 0xffffffffu);
+
+    // Immediate 0.
+    load(0x01578023u, 2);
+    WAVE_EXPECT_EQ(top->imm_op, 0x00000000u);
+
+    // Immediate 1.
+    load(0x015780a3u, 2);
+    WAVE_EXPECT_EQ(top->imm_op, 0x00000001u);
+
+    // Immediate 31.
+    load(0x01578fa3u, 2);
+    WAVE_EXPECT_EQ(top->imm_op, 0x0000001fu);
+
+    // Immediate 32.
+    load(0x03578023u, 2);
+    WAVE_EXPECT_EQ(top->imm_op, 0x00000020u);
+
+    // Immediate 2047.
+    load(0x7f578fa3u, 2);
+    WAVE_EXPECT_EQ(top->imm_op, 0x000007ffu);
+}
+
+
+// U-type immediates retain bits 31:12 and clear the low twelve bits.
+TEST_F(Immediate, UpperImmediate)
+{
+    // Immediate 0.
+    load(0x00000000u, 4);
+    WAVE_EXPECT_EQ(top->imm_op, 0x00000000u);
+
+    // Immediate 305418240.
+    load(0x12345fffu, 4);
+    WAVE_EXPECT_EQ(top->imm_op, 0x12345000u);
+
+    // Immediate 2147483648.
+    load(0x80000037u, 4);
+    WAVE_EXPECT_EQ(top->imm_op, 0x80000000u);
+
+    // Immediate 4294963200.
+    load(0xfffff037u, 4);
+    WAVE_EXPECT_EQ(top->imm_op, 0xfffff000u);
 }

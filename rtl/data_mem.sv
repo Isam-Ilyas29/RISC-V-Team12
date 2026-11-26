@@ -1,6 +1,6 @@
 module data_mem #(
     parameter ADDRESS_WIDTH = 9,
-    parameter INIT_FILE = "../rtl/data.hex"
+    parameter INIT_FILE = "data.hex"
 ) (
     input logic [31:0] a,          // ALU result
     input logic [31:0] wd,         // Write data

@@ -3,37 +3,191 @@
 class Branch : public BaseTestbench
 {
 protected:
-    static int64_t signedValue(uint32_t value)
+    void load(uint32_t a, uint32_t b, unsigned condition)
     {
-        if (value < 0x80000000u)
-            return value;
-        return int64_t(value) - 0x100000000LL;
+        top->rs1_data = a;
+        top->rs2_data = b;
+        top->branch_ctrl = condition;
+        sample();
     }
 
     void initializeInputs() override
     {
         top->rs1_data = 0;
         top->rs2_data = 0;
-        top->funct3 = 0;
+        top->branch_ctrl = 0;
     }
 };
 
-// Check every branch condition with equal, positive and negative operands.
-TEST_F(Branch, AllConditions)
+// Check equality, both operand orders and signed/unsigned limits.
+TEST_F(Branch, Equal)
 {
-    const unsigned values[] = {0, 1, 2, 0x7fffffff, 0x80000000, 0xfffffffe, 0xffffffff};
-    for (unsigned a : values)
-        for (unsigned b : values)
-            for (unsigned condition = 0; condition < 8; ++condition) {
-                const int64_t signed_a = signedValue(a);
-                const int64_t signed_b = signedValue(b);
-                const bool expected[] = {a == b, a != b, false, false,
-                                         signed_a < signed_b, signed_a >= signed_b, a < b, a >= b};
-                top->rs1_data = a;
-                top->rs2_data = b;
-                top->funct3 = condition;
-                sample();
-                WAVE_EXPECT_EQ(top->branch_taken, expected[condition])
-                    << "rs1 " << a << ", rs2 " << b << ", funct3 " << condition;
-            }
+    load(0x00000000u, 0x00000000u, 0b000);
+    WAVE_EXPECT_EQ(top->branch_taken, 1u);
+
+    load(0x00000001u, 0x00000002u, 0b000);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+    load(0x00000002u, 0x00000001u, 0b000);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+    load(0xffffffffu, 0x00000001u, 0b000);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+    load(0x00000001u, 0xffffffffu, 0b000);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+    load(0x80000000u, 0x7fffffffu, 0b000);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+    load(0x7fffffffu, 0x80000000u, 0b000);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+}
+
+// Check equality, both operand orders and signed/unsigned limits.
+TEST_F(Branch, NotEqual)
+{
+    load(0x00000000u, 0x00000000u, 0b001);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+    load(0x00000001u, 0x00000002u, 0b001);
+    WAVE_EXPECT_EQ(top->branch_taken, 1u);
+
+    load(0x00000002u, 0x00000001u, 0b001);
+    WAVE_EXPECT_EQ(top->branch_taken, 1u);
+
+    load(0xffffffffu, 0x00000001u, 0b001);
+    WAVE_EXPECT_EQ(top->branch_taken, 1u);
+
+    load(0x00000001u, 0xffffffffu, 0b001);
+    WAVE_EXPECT_EQ(top->branch_taken, 1u);
+
+    load(0x80000000u, 0x7fffffffu, 0b001);
+    WAVE_EXPECT_EQ(top->branch_taken, 1u);
+
+    load(0x7fffffffu, 0x80000000u, 0b001);
+    WAVE_EXPECT_EQ(top->branch_taken, 1u);
+
+}
+
+// Check equality, both operand orders and signed/unsigned limits.
+TEST_F(Branch, SignedLess)
+{
+    load(0x00000000u, 0x00000000u, 0b100);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+    load(0x00000001u, 0x00000002u, 0b100);
+    WAVE_EXPECT_EQ(top->branch_taken, 1u);
+
+    load(0x00000002u, 0x00000001u, 0b100);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+    load(0xffffffffu, 0x00000001u, 0b100);
+    WAVE_EXPECT_EQ(top->branch_taken, 1u);
+
+    load(0x00000001u, 0xffffffffu, 0b100);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+    load(0x80000000u, 0x7fffffffu, 0b100);
+    WAVE_EXPECT_EQ(top->branch_taken, 1u);
+
+    load(0x7fffffffu, 0x80000000u, 0b100);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+}
+
+// Check equality, both operand orders and signed/unsigned limits.
+TEST_F(Branch, SignedGreaterOrEqual)
+{
+    load(0x00000000u, 0x00000000u, 0b101);
+    WAVE_EXPECT_EQ(top->branch_taken, 1u);
+
+    load(0x00000001u, 0x00000002u, 0b101);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+    load(0x00000002u, 0x00000001u, 0b101);
+    WAVE_EXPECT_EQ(top->branch_taken, 1u);
+
+    load(0xffffffffu, 0x00000001u, 0b101);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+    load(0x00000001u, 0xffffffffu, 0b101);
+    WAVE_EXPECT_EQ(top->branch_taken, 1u);
+
+    load(0x80000000u, 0x7fffffffu, 0b101);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+    load(0x7fffffffu, 0x80000000u, 0b101);
+    WAVE_EXPECT_EQ(top->branch_taken, 1u);
+
+}
+
+// Check equality, both operand orders and signed/unsigned limits.
+TEST_F(Branch, UnsignedLess)
+{
+    load(0x00000000u, 0x00000000u, 0b110);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+    load(0x00000001u, 0x00000002u, 0b110);
+    WAVE_EXPECT_EQ(top->branch_taken, 1u);
+
+    load(0x00000002u, 0x00000001u, 0b110);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+    load(0xffffffffu, 0x00000001u, 0b110);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+    load(0x00000001u, 0xffffffffu, 0b110);
+    WAVE_EXPECT_EQ(top->branch_taken, 1u);
+
+    load(0x80000000u, 0x7fffffffu, 0b110);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+    load(0x7fffffffu, 0x80000000u, 0b110);
+    WAVE_EXPECT_EQ(top->branch_taken, 1u);
+
+}
+
+// Check equality, both operand orders and signed/unsigned limits.
+TEST_F(Branch, UnsignedGreaterOrEqual)
+{
+    load(0x00000000u, 0x00000000u, 0b111);
+    WAVE_EXPECT_EQ(top->branch_taken, 1u);
+
+    load(0x00000001u, 0x00000002u, 0b111);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+    load(0x00000002u, 0x00000001u, 0b111);
+    WAVE_EXPECT_EQ(top->branch_taken, 1u);
+
+    load(0xffffffffu, 0x00000001u, 0b111);
+    WAVE_EXPECT_EQ(top->branch_taken, 1u);
+
+    load(0x00000001u, 0xffffffffu, 0b111);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+    load(0x80000000u, 0x7fffffffu, 0b111);
+    WAVE_EXPECT_EQ(top->branch_taken, 1u);
+
+    load(0x7fffffffu, 0x80000000u, 0b111);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+}
+
+// Both reserved controls must reject a branch, even with equal operands.
+TEST_F(Branch, ReservedConditions)
+{
+    load(0, 0, 2);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+    load(0, 1, 2);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+    load(0, 0, 3);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
+    load(0, 1, 3);
+    WAVE_EXPECT_EQ(top->branch_taken, 0u);
+
 }

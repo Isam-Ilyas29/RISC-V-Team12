@@ -9,7 +9,7 @@ module instr_mem #(
 
 
     initial begin
-        $readmemh("../rtl/program.hex", instr_array);
+        $readmemh("program.hex", instr_array);
     end
 
     always_comb begin

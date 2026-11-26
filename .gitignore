@@ -7,3 +7,7 @@ a.bin
 
 *.vcd.status
 *.vcd.checks.tsv
+
+tb/test_out/
+tb/program.hex
+tb/data.hex
