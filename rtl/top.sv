@@ -137,11 +137,11 @@ module top #(
 
     always_comb begin
         case (result_src)
-            3'b000:  result = alu_result;   // ALU ops
-            3'b001:  result = read_data;    // loads
-            3'b010:  result = pc_plus_4;    // jal / jalr
-            3'b011:  result = imm_ext;      // lui
-            3'b100:  result = pc_target;    // auipc
+            3'b000:  result = alu_result;  // ALU ops
+            3'b001:  result = read_data;  // loads
+            3'b010:  result = pc_plus_4;  // jal / jalr
+            3'b011:  result = imm_ext;  // lui
+            3'b100:  result = pc_target;  // auipc
             default: result = alu_result;
         endcase
     end
