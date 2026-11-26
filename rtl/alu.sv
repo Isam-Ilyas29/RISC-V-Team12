@@ -22,7 +22,8 @@ module alu #(
     localparam SRL  = 4'b1000;
     localparam SRA  = 4'b1001;
 
-    logic [4:0] shamt = alu2[4:0];  // shift amount
+    logic [4:0] shamt;  // Shift amount
+    assign shamt = alu2[4:0];
 
     always_comb begin
         case (alu_ctrl)

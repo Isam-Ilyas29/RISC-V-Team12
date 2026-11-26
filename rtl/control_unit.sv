@@ -191,7 +191,7 @@ module control_unit (
                 imm_src = 3'b011;
                 result_src = 2'b10;
                 reg_write = 1'b1;
-                pc_ctrl = PC_JUMP;
+                pc_ctrl = PC_BRANCH;
             end
             JALR: begin
                 alu_src = 1'b1;
