@@ -1,4 +1,4 @@
 #!/bin/bash
 # The integrated datapath is now in top.sv.
 set -eu
-bash "$(dirname "$0")/doit-wsl.sh" tests/cpu_regression_tb.cpp
+bash "$(dirname "$0")/doit.sh" tests/cpu_regression_tb.cpp
